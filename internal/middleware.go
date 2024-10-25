@@ -21,6 +21,15 @@ func (app *Application) secureHeaders(next http.Handler) http.Handler {
 	})
 }
 
+// contentTypeHeader will add the json content type header to the response.
+func (app *Application) contentTypeHeader(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 // logRequest will log the incoming request details.
 func (app *Application) logRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

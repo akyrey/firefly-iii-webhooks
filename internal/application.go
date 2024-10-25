@@ -4,11 +4,14 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+
+	"github.com/akyrey/firefly-iii-webhooks/pkg/firefly"
 )
 
 type Application struct {
-	Config Config
-	Logger *slog.Logger
+	Config        Config
+	FireflyConfig firefly.Config
+	Logger        *slog.Logger
 }
 
 func (a Application) serverError(w http.ResponseWriter, r *http.Request, err error) {
@@ -35,7 +38,6 @@ func (a Application) notFound(w http.ResponseWriter, r *http.Request) {
 
 // formatErrorMessage will return an error message in the requested format.
 func (a Application) formatErrorMessage(w http.ResponseWriter, r *http.Request, message string) string {
-	w.Header().Set("Content-Type", "application/json")
 	// jsonError, err := json.Marshal(models.ErrorResponse{Message: message})
 	// if err == nil {
 	// 	return string(jsonError)
@@ -44,8 +46,7 @@ func (a Application) formatErrorMessage(w http.ResponseWriter, r *http.Request, 
 	return message
 }
 
-func (a Application) clientResponse(w http.ResponseWriter, r *http.Request, status int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
+func (a Application) clientResponse(w http.ResponseWriter, r *http.Request, status int, data ...any) {
 	w.WriteHeader(status)
 	// err := json.NewEncoder(w).Encode(models.DataResponse{Data: data})
 	// if err != nil {

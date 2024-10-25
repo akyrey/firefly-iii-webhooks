@@ -1,0 +1,90 @@
+{
+  "content": [
+    {
+      "account_number": null,
+      "account_role": "defaultAsset",
+      "active": true,
+      "bic": null,
+      "created_at": "2024-10-25T11:54:53+02:00",
+      "credit_card_type": null,
+      "currency_code": "EUR",
+      "currency_decimal_places": 2,
+      "currency_id": "1",
+      "currency_symbol": "€",
+      "current_balance": "-21.00",
+      "current_balance_date": "2024-10-25T23:59:59+02:00",
+      "current_debt": null,
+      "iban": null,
+      "id": "1",
+      "include_net_worth": true,
+      "interest": null,
+      "interest_period": null,
+      "latitude": null,
+      "liability_direction": null,
+      "liability_type": null,
+      "links": [
+        {
+          "rel": "self",
+          "uri": "/accounts/1"
+        }
+      ],
+      "longitude": null,
+      "monthly_payment_date": null,
+      "name": "Ticket Restaurant",
+      "notes": null,
+      "opening_balance": "0",
+      "opening_balance_date": null,
+      "order": 1,
+      "type": "asset",
+      "updated_at": "2024-10-25T11:55:26+02:00",
+      "virtual_balance": "0.00",
+      "zoom_level": null
+    },
+    {
+      "account_number": "",
+      "account_role": null,
+      "active": true,
+      "bic": "",
+      "created_at": "2024-10-25T12:07:25+02:00",
+      "credit_card_type": null,
+      "currency_code": "EUR",
+      "currency_decimal_places": 2,
+      "currency_id": "1",
+      "currency_symbol": "€",
+      "current_balance": "21.00",
+      "current_balance_date": "2024-10-25T23:59:59+02:00",
+      "current_debt": null,
+      "iban": null,
+      "id": "6",
+      "include_net_worth": true,
+      "interest": null,
+      "interest_period": null,
+      "latitude": null,
+      "liability_direction": null,
+      "liability_type": null,
+      "links": [
+        {
+          "rel": "self",
+          "uri": "/accounts/6"
+        }
+      ],
+      "longitude": null,
+      "monthly_payment_date": null,
+      "name": "Test",
+      "notes": null,
+      "opening_balance": "0",
+      "opening_balance_date": null,
+      "order": null,
+      "type": "expense",
+      "updated_at": "2024-10-25T12:07:25+02:00",
+      "virtual_balance": "0",
+      "zoom_level": null
+    }
+  ],
+  "response": "ACCOUNTS",
+  "trigger": "STORE_TRANSACTION",
+  "url": "http://firefly_webhooks:4000/api/v1/webhook/split-ticket",
+  "user_id": 1,
+  "uuid": "155245c3-e5b7-4aab-bb1f-8d295badbc88",
+  "version": "v0"
+}

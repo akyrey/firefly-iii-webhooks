@@ -7,6 +7,7 @@ import (
 
 	"github.com/akyrey/firefly-iii-webhooks/internal"
 	"github.com/akyrey/firefly-iii-webhooks/pkg/assert"
+	"github.com/akyrey/firefly-iii-webhooks/pkg/firefly"
 	"github.com/akyrey/firefly-iii-webhooks/pkg/prettylog"
 )
 
@@ -20,8 +21,9 @@ func main() {
 	}))
 
 	app := &internal.Application{
-		Config: config,
-		Logger: logger,
+		Config:        config,
+		FireflyConfig: firefly.ReadConfig(config.FireflyConfigFile),
+		Logger:        logger,
 	}
 
 	srv := &http.Server{

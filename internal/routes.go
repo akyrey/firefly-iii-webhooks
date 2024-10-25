@@ -14,6 +14,7 @@ func (app *Application) Routes(config Config) http.Handler {
 		app.recoverPanic,
 		app.logRequest,
 		app.secureHeaders,
+		app.contentTypeHeader,
 	)
 
 	mux.Handle("/api/v1/webhook/split-ticket", protected.ThenFunc(app.splitTicket))
