@@ -8,16 +8,18 @@ import (
 // Config holds basic application configuration.
 type Config struct {
 	Addr              string
-	FireflyKey        string
+	FireflyBaseUrl    string
 	FireflyConfigFile string
+	FireflyKey        string
 	LogLevel          slog.Level
 }
 
 // Parse parses the command line flags and stores the result in the Config struct.
 func (c *Config) Parse() {
 	flag.StringVar(&c.Addr, "addr", ":4000", "HTTP network address")
-	flag.StringVar(&c.FireflyKey, "firefly-key", "", "Firefly III API key to use")
+	flag.StringVar(&c.FireflyBaseUrl, "firefly-base-url", "http://firefly_webhooks:4000", "Base URL for the Firefly III API")
 	flag.StringVar(&c.FireflyConfigFile, "firefly-config", "./config.json", "JSON configuration file for Firefly webhooks")
+	flag.StringVar(&c.FireflyKey, "firefly-key", "", "Firefly III API key to use")
 	var logLevel string
 	flag.StringVar(&logLevel, "log-level", "debug", "Log message level")
 	level, err := parseLogLevel(logLevel)

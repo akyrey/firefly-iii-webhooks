@@ -21,7 +21,11 @@ func main() {
 	}))
 
 	app := &internal.Application{
-		Config:        config,
+		Config: config,
+		FireflyClient: firefly.NewFirefly(
+			config.FireflyBaseUrl,
+			firefly.WithApiKey(config.FireflyKey),
+		),
 		FireflyConfig: firefly.ReadConfig(config.FireflyConfigFile),
 		Logger:        logger,
 	}

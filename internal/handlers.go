@@ -49,7 +49,7 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	// TODO:
 	// 3. Check if the header contains the signature and verify it
 
-	// 7. Calculate the amount to split, using amount / 8 and amount % 8
+	// 4. Check content type
 	content, ok := webhookMessage.Content.(firefly.WebhookMessageTransaction)
 	if !ok {
 		app.Logger.Error("Invalid content type")
@@ -58,7 +58,7 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	count := len(content.Transactions)
-	// Only apply to single transactions
+	// 5. Only apply to single transactions and to transactions with foreing amount and currency
 	if count == 0 || count > 1 {
 		app.Logger.Debug("Found zero or more than one transactions", "count", count)
 		app.clientResponse(w, r, http.StatusNoContent)
@@ -66,15 +66,22 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	t := content.Transactions[0]
-	amount, err := strconv.ParseFloat(strings.TrimSpace(t.Amount), 64)
+	if t.ForeignAmount == nil || t.ForeignCurrencyDecimalPlaces == nil {
+		app.Logger.Error("Transactions missing foreign amount info", "transaction", t)
+		app.clientError(w, r, http.StatusBadRequest)
+		return
+	}
+
+	// 6. Calculate the amount to split, using amount / 8 and amount % 8
+	amount, err := strconv.ParseFloat(strings.TrimSpace(*t.ForeignAmount), 64)
 	if err != nil {
-		app.Logger.Error("Invalid amount", "amount", t.Amount)
+		app.Logger.Error("Invalid foreign amount", "amount", *t.ForeignAmount)
 		app.clientError(w, r, http.StatusBadRequest)
 		return
 	}
 
 	if t.SourceID != config.SourceAccountId ||
-		math.Abs(amount-config.SplitAmount) <= math.Pow10(-t.CurrencyDecimalPlaces) {
+		math.Abs(amount-config.SplitAmount) <= math.Pow10(-*t.ForeignCurrencyDecimalPlaces) {
 		app.Logger.Debug("Transaction doesn't meet the requirements", "transaction", t)
 		app.clientResponse(w, r, http.StatusNoContent)
 		return

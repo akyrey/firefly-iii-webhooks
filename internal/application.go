@@ -10,7 +10,8 @@ import (
 
 type Application struct {
 	Config        Config
-	FireflyConfig firefly.Config
+	FireflyClient *firefly.Firefly
+	FireflyConfig *firefly.Config
 	Logger        *slog.Logger
 }
 
