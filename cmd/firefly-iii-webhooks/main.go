@@ -24,7 +24,7 @@ func main() {
 		Config: config,
 		FireflyClient: firefly.NewFirefly(
 			config.FireflyBaseUrl,
-			firefly.WithApiKey(config.FireflyKey),
+			firefly.WithApiKey(config.FireflyApiKey),
 		),
 		FireflyConfig: firefly.ReadConfig(config.FireflyConfigFile),
 		Logger:        logger,
