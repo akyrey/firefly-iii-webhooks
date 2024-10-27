@@ -59,3 +59,18 @@ type Transaction struct {
 	Order                        int         `json:"order"`
 	Reconciled                   bool        `json:"reconciled"`
 }
+
+type StoreTransactionRequest struct {
+	GroupTitle           string        `json:"group_title"`
+	Transactions         []Transaction `json:"transactions"`
+	ErrorIfDuplicateHash bool          `json:"error_if_duplicate_hash"`
+	ApplyRules           bool          `json:"apply_rules"`
+	FireWebhooks         bool          `json:"fire_webhooks"`
+}
+
+type UpdateTransactionRequest struct {
+	GroupTitle   string        `json:"group_title"`
+	Transactions []Transaction `json:"transactions"`
+	ApplyRules   bool          `json:"apply_rules"`
+	FireWebhooks bool          `json:"fire_webhooks"`
+}

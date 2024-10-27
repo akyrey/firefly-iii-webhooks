@@ -6,8 +6,8 @@
       "secret": "ADD_SECRET_HERE",
       "type": "withdrawal",
       "source_account_id": 1,
-      "destination_account_id": 2,
-      "destination_currency_id": 2,
+      "destination_account_id": 4,
+      "destination_currency_id": 1,
       "destination_currency_decimal_places": 2,
       "split_amount": 8
     }

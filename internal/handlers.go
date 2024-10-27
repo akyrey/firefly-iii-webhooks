@@ -91,11 +91,13 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.Logger.Debug("Transaction meets the requirements", "transaction", t)
-	// 8. If the module isn't 0, update this transaction setting the amount to the amount / 8 result
-	//    and clone the transaction setting the currency to Satispay and the amount to amount % 8 result
-	division := foreignAmount / config.SplitAmount
+	// 7. Update this transaction setting the amount to the amount / config.SplitAmount result
+	division := math.Floor(foreignAmount / config.SplitAmount)
+	updatedForeignAmountF := division * config.SplitAmount
+	app.Logger.Debug("Division result", "division", division)
 	updatedAmount := fmt.Sprintf("%.[2]*[1]f", division, t.CurrencyDecimalPlaces)
-	updatedForeignAmount := fmt.Sprintf("%.[2]*[1]f", division*config.SplitAmount, t.ForeignCurrencyDecimalPlaces)
+	updatedForeignAmount := fmt.Sprintf("%.[2]*[1]f", updatedForeignAmountF, *t.ForeignCurrencyDecimalPlaces)
+	app.Logger.Debug("Foreign amount", "foreign amount float", updatedForeignAmountF, "string", updatedForeignAmount, "")
 	var tToUpdate models.Transaction
 	err = copier.Copy(&tToUpdate, &t)
 	if err != nil {
@@ -105,16 +107,24 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	tToUpdate.Amount = updatedAmount
 	tToUpdate.ForeignAmount = &updatedForeignAmount
 	tToUpdate.Tags = append(tToUpdate.Tags, "Webhook: split_ticket", fmt.Sprintf("Webhook uuid: %s", webhookMessage.Uuid))
-	// TODO: update transaction
-	// if err != nil {
-	// 	app.serverError(w, r, err)
-	// 	return
-	// }
+	app.Logger.Debug("Updating transaction", "transaction", tToUpdate)
+	err = app.FireflyClient.UpdateTransaction(
+		content.ID,
+		&models.UpdateTransactionRequest{
+			ApplyRules:   true,
+			FireWebhooks: true,
+			Transactions: []models.Transaction{tToUpdate},
+		})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
 	modulo := math.Mod(foreignAmount, config.SplitAmount)
 	if modulo <= zeroWithDelta {
 		app.clientResponse(w, r, http.StatusNoContent)
 		return
 	}
+	// 8. If the module isn't 0, create a new transaction with the module amount
 	moduloAmount := fmt.Sprintf("%.[2]*[1]f", modulo, config.DestinationCurrencyDecimalPlaces)
 	var tToCreate models.Transaction
 	err = copier.Copy(&tToCreate, &t)
@@ -123,14 +133,19 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tToCreate.Amount = moduloAmount
+	tToCreate.SourceID = config.DestinationAccountId
 	tToCreate.CurrencyID = config.DestinationCurrencyId
-	tToCreate.ForeignAmount = nil
-	tToCreate.ForeignCurrencyID = nil
 	tToCreate.Tags = append(tToCreate.Tags, "Webhook: split_ticket", fmt.Sprintf("Webhook uuid: %s", webhookMessage.Uuid))
-	// TODO: create transaction
-	// if err != nil {
-	// 	app.serverError(w, r, err)
-	// 	return
-	// }
+	app.Logger.Debug("Creating transaction", "transaction", tToCreate)
+	err = app.FireflyClient.CreateTransaction(&models.StoreTransactionRequest{
+		ApplyRules:           true,
+		ErrorIfDuplicateHash: true,
+		FireWebhooks:         true,
+		Transactions:         []models.Transaction{tToCreate},
+	})
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
 	app.clientResponse(w, r, http.StatusNoContent)
 }
