@@ -55,7 +55,7 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	// 4. Check content type
 	content, ok := webhookMessage.Content.(firefly.WebhookMessageTransaction)
 	if !ok {
-		app.Logger.Error("Invalid content type")
+		app.Logger.Error("Invalid content type", "content", webhookMessage.Content)
 		app.clientError(w, r, http.StatusBadRequest)
 		return
 	}
@@ -69,6 +69,11 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	t := content.Transactions[0]
+	if t.SourceID != config.SourceAccountId {
+		app.Logger.Debug("Transaction source id different from configured one", "transaction", t)
+		app.clientResponse(w, r, http.StatusNoContent)
+		return
+	}
 	if t.ForeignAmount == nil || t.ForeignCurrencyDecimalPlaces == nil {
 		app.Logger.Error("Transactions missing foreign amount info", "transaction", t)
 		app.clientError(w, r, http.StatusBadRequest)
@@ -83,21 +88,12 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	zeroWithDelta := math.Pow10(-*t.ForeignCurrencyDecimalPlaces)
-	if t.SourceID != config.SourceAccountId || math.Abs(foreignAmount-config.SplitAmount) <= zeroWithDelta {
-		app.Logger.Debug("Transaction doesn't meet the requirements", "transaction", t)
-		app.clientResponse(w, r, http.StatusNoContent)
-		return
-	}
-
 	app.Logger.Debug("Transaction meets the requirements", "transaction", t)
 	// 7. Update this transaction setting the amount to the amount / config.SplitAmount result
 	division := math.Floor(foreignAmount / config.SplitAmount)
 	updatedForeignAmountF := division * config.SplitAmount
-	app.Logger.Debug("Division result", "division", division)
 	updatedAmount := fmt.Sprintf("%.[2]*[1]f", division, t.CurrencyDecimalPlaces)
 	updatedForeignAmount := fmt.Sprintf("%.[2]*[1]f", updatedForeignAmountF, *t.ForeignCurrencyDecimalPlaces)
-	app.Logger.Debug("Foreign amount", "foreign amount float", updatedForeignAmountF, "string", updatedForeignAmount, "")
 	var tToUpdate models.Transaction
 	err = copier.Copy(&tToUpdate, &t)
 	if err != nil {
@@ -107,7 +103,7 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	tToUpdate.Amount = updatedAmount
 	tToUpdate.ForeignAmount = &updatedForeignAmount
 	tToUpdate.Tags = append(tToUpdate.Tags, "Webhook: split_ticket", fmt.Sprintf("Webhook uuid: %s", webhookMessage.Uuid))
-	app.Logger.Debug("Updating transaction", "transaction", tToUpdate)
+	app.Logger.Debug("Updating transaction amount, foreign amount and tags", "transaction", tToUpdate)
 	err = app.FireflyClient.UpdateTransaction(
 		content.ID,
 		&models.UpdateTransactionRequest{
@@ -119,8 +115,11 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, r, err)
 		return
 	}
+
 	modulo := math.Mod(foreignAmount, config.SplitAmount)
+	zeroWithDelta := math.Pow10(-*t.ForeignCurrencyDecimalPlaces)
 	if modulo <= zeroWithDelta {
+		app.Logger.Debug("No need to create new transaction: remainder lesser than zero", "modulo", modulo)
 		app.clientResponse(w, r, http.StatusNoContent)
 		return
 	}
@@ -135,6 +134,11 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	tToCreate.Amount = moduloAmount
 	tToCreate.SourceID = config.DestinationAccountId
 	tToCreate.CurrencyID = config.DestinationCurrencyId
+	tToCreate.ForeignAmount = nil
+	tToCreate.ForeignCurrencyID = nil
+	tToCreate.ForeignCurrencyCode = nil
+	tToCreate.ForeignCurrencyDecimalPlaces = nil
+	tToCreate.ForeignCurrencySymbol = nil
 	tToCreate.Tags = append(tToCreate.Tags, "Webhook: split_ticket", fmt.Sprintf("Webhook uuid: %s", webhookMessage.Uuid))
 	app.Logger.Debug("Creating transaction", "transaction", tToCreate)
 	err = app.FireflyClient.CreateTransaction(&models.StoreTransactionRequest{
@@ -147,5 +151,6 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, r, err)
 		return
 	}
+	app.Logger.Debug("Webhook completed successfully")
 	app.clientResponse(w, r, http.StatusNoContent)
 }
