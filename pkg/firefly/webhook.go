@@ -1,9 +1,13 @@
 package firefly
 
 import (
+	"crypto/hmac"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/akyrey/firefly-iii-webhooks/pkg/firefly/models"
+	"golang.org/x/crypto/sha3"
 )
 
 // The UUID is unique for each webhook message. You can use it for debug purposes.
@@ -36,8 +40,6 @@ const (
 	RESPONSE_NONE         WebhookResponse = "NONE"
 )
 
-// TODO: add signature verification
-
 func (msg *WebhookMessage) UnmarshalJSON(b []byte) error {
 	// INFO: workaround to avoid infinite recursion
 	type TmpJson WebhookMessage
@@ -65,6 +67,34 @@ func (msg *WebhookMessage) UnmarshalJSON(b []byte) error {
 	}
 
 	*msg = WebhookMessage(res)
+	return nil
+}
+
+// verifySignature will check if the signature is valid for the current message.
+// Signature example: t=1610738765,v1=d62463af1dcdcc7b5a2db6cf6b1e01d985c31685ee75d01a4f40754dbb4cf396
+func (msg *WebhookMessage) VerifySignature(signatureHeader, body, secret string) error {
+	parts := strings.Split(signatureHeader, ",")
+	if len(parts) != 2 {
+		return ErrFireflyInvalidSignature
+	}
+
+	timestampPart := strings.Split(parts[0], "=")
+	signaturePart := strings.Split(parts[1], "=")
+	if len(timestampPart) != 2 || len(signaturePart) != 2 {
+		return ErrFireflyInvalidSignature
+	}
+
+	concatenation := fmt.Sprintf("%s.%s", timestampPart[1], body)
+	dataHmac := hmac.New(sha3.New256, []byte(secret))
+	_, err := dataHmac.Write([]byte(concatenation))
+	if err != nil {
+		return ErrFireflyInvalidSignature
+	}
+
+	if fmt.Sprintf("%x", dataHmac.Sum(nil)) != signaturePart[1] {
+		return ErrFireflyInvalidSignature
+	}
+
 	return nil
 }
 
