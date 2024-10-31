@@ -1,8 +1,38 @@
-# firefly-iii-webhooks
+# Firefly-iii webhooks
 
 Webhooks handler for Firefly-iii
 
-## Original script to test webhooks
+## Available configurations
+
+Options can be handled as environment variables or flags. 
+Use lower-kebab-case for flags
+
+- ADDR network address and port to listen to. Defaults to ":4000"
+- LOG_LEVEL log message levels to display. Defaults to "debug", "error", "warn", "info" and "debug" available
+- FIREFLY_BASE_URL firefly-iii instance endpoint. **MUST NOT** end with / e.g. https://firefly.example.com
+- FIREFLY_CONFIG json configuration files to use for webhooks. Defaults to ./config.json
+- FIREFLY_API_KEY personal access token generated from Firefly-iii settings
+
+The FIREFLY_CONFIG file must be a json object with keys the actions handled and values an array of configurations. 
+Each configuration depends on the action.
+
+## Available actions
+
+### Split amount
+
+Split a transaction updating the amount and foreign amount based on configuration and conditionally create a new transaction
+with the same values but the source account and amount.
+
+e.g. When I perform a withdrawal on account X calculate the integer division from the foreign amount updating the transaction
+amount and create a new transaction with the remainder using account Y as source
+
+TODO: add configuration example
+
+## How to use
+
+TODO: explain how to run the development and production versions
+
+## Original script to verify webhook signature
 
 ```php
 <?php
