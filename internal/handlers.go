@@ -50,10 +50,11 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	config := app.FireflyConfig.SplitTicket[cIdx]
 	app.Logger.Debug("Found configuration", "config", config)
 
+	app.Logger.Debug("Verifying signature", "signature", r.Header.Get("Signature"))
 	// 3. Check if the header contains the signature and verify it
-	err = webhookMessage.VerifySignature(r.Header.Get("Signature"), string(webhookMessage.RawContent), config.Secret)
+	err = webhookMessage.VerifySignature(r.Header.Get("Signature"), string(b), config.Secret)
 	if err != nil {
-		app.Logger.Error("Missing signature header", "error", err)
+		app.Logger.Error("Failed validating signature", "header", r.Header.Get("Signature"), "error", err)
 		app.clientError(w, r, http.StatusBadRequest)
 		return
 	}

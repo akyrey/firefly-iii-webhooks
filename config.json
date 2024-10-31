@@ -3,7 +3,7 @@
     {
       "trigger": "STORE_TRANSACTION",
       "response": "TRANSACTIONS",
-      "secret": "ADD_SECRET_HERE",
+      "secret": "M6FhOxcsfIf5AWo63duzNpCX",
       "type": "withdrawal",
       "source_account_id": 1,
       "destination_account_id": 4,
