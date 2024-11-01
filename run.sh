@@ -1,5 +1,7 @@
 #!/bin/bash
 
+docker build -t air -f Dockerfile.dev .
+
 docker run --rm -it \
 	-w /app \
 	-v "${PWD}":/app \
