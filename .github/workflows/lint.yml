@@ -1,0 +1,36 @@
+name: lint
+
+permissions: {} # no need any permissions
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+jobs:
+  run:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: true
+      matrix:
+        go: ["stable", "oldstable"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+          check-latest: true
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v4.0.0
+        with:
+          version: latest
+          args: --timeout 5m
