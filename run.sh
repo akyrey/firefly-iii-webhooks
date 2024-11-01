@@ -1,6 +1,6 @@
 #!/bin/bash
 
-docker build -t air -f Dockerfile.dev .
+docker build -t air -f Dockerfile.devel .
 
 docker run --rm -it \
 	-w /app \
