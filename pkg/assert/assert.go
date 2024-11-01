@@ -2,7 +2,6 @@ package assert
 
 import (
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"reflect"
@@ -20,7 +19,6 @@ type AssertFlush interface {
 var (
 	flushes    []AssertFlush         = []AssertFlush{}
 	assertData map[string]AssertData = map[string]AssertData{}
-	writer     io.Writer
 )
 
 func AddAssertData(key string, value AssertData) {
@@ -33,10 +31,6 @@ func RemoveAssertData(key string) {
 
 func AddAssertFlush(flusher AssertFlush) {
 	flushes = append(flushes, flusher)
-}
-
-func ToWriter(w io.Writer) {
-	writer = w
 }
 
 func runAssert(msg string, args ...interface{}) {

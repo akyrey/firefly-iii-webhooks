@@ -36,8 +36,8 @@ func (c SplitTicketConfig) AppliesTo(msg WebhookMessage) bool {
 // ReadConfig reads the configuration from a JSON file.
 func ReadConfig(file string) *Config {
 	configFile, err := os.Open(file)
-	defer configFile.Close()
 	assert.NoError(err, "Firefly configuration file should always be provided")
+	defer configFile.Close()
 
 	var config Config
 	jsonParser := json.NewDecoder(configFile)

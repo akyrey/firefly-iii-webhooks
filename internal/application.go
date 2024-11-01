@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
+	"github.com/akyrey/firefly-iii-webhooks/pkg/assert"
 	"github.com/akyrey/firefly-iii-webhooks/pkg/firefly"
 )
 
@@ -24,17 +25,15 @@ func (a Application) serverError(w http.ResponseWriter, r *http.Request, err err
 	)
 	message := a.formatErrorMessage(w, r, err.Error())
 	w.WriteHeader(http.StatusInternalServerError)
-	w.Write([]byte(message))
+	_, err = w.Write([]byte(message))
+	assert.NoError(err, "Unable to write response", "error", err)
 }
 
 func (a Application) clientError(w http.ResponseWriter, r *http.Request, status int) {
 	message := a.formatErrorMessage(w, r, http.StatusText(status))
 	w.WriteHeader(status)
-	w.Write([]byte(message))
-}
-
-func (a Application) notFound(w http.ResponseWriter, r *http.Request) {
-	a.clientError(w, r, http.StatusNotFound)
+	_, err := w.Write([]byte(message))
+	assert.NoError(err, "Unable to write response", "error", err)
 }
 
 // formatErrorMessage will return an error message in the requested format.
@@ -53,5 +52,4 @@ func (a Application) clientResponse(w http.ResponseWriter, r *http.Request, stat
 	// if err != nil {
 	// 	serverError(logger, w, r, err)
 	// }
-	return
 }
