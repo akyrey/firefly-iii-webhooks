@@ -3,13 +3,69 @@ package firefly
 import (
 	"encoding/json"
 	"os"
+	"slices"
 
 	"github.com/akyrey/firefly-iii-webhooks/pkg/assert"
 )
 
+// ConfigType is an enum listing all possible configuration types.
+type ConfigType string
+
+const (
+	SplitTicket ConfigType = "split_ticket"
+)
+
 // Config holds configuration regarding Firefly webhooks.
-type Config struct {
-	SplitTicket []SplitTicketConfig `json:"split_ticket,omitempty"`
+type Config map[ConfigType][]ConfigValue
+
+type ConfigValue interface {
+	// AppliesTo checks if the configuration applies to the given message.
+	AppliesTo(msg WebhookMessage) bool
+}
+
+// UnmarshalJSON unmarshals the JSON configuration file into the Config struct.
+func (c *Config) UnmarshalJSON(b []byte) error {
+	if *c == nil {
+		*c = make(map[ConfigType][]ConfigValue)
+	}
+	var config map[ConfigType][]json.RawMessage
+	if err := json.Unmarshal(b, &config); err != nil {
+		return err
+	}
+	for t, list := range config {
+		switch t {
+		case SplitTicket:
+			var splitTicketList []ConfigValue
+			for _, raw := range list {
+				var splitTicket SplitTicketConfig
+				if err := json.Unmarshal(raw, &splitTicket); err != nil {
+					return err
+				}
+				splitTicketList = append(splitTicketList, splitTicket)
+			}
+			(*c)[t] = splitTicketList
+		}
+	}
+	return nil
+}
+
+// FindConfig finds the configuration that applies to the given message.
+func (c *Config) FindConfig(t ConfigType, msg WebhookMessage) (ConfigValue, error) {
+	list, ok := (*c)[t]
+	if !ok {
+		return nil, ErrFireflyConfigNotFound
+	}
+	cIdx := slices.IndexFunc(
+		list,
+		func(c ConfigValue) bool {
+			return c.AppliesTo(msg)
+		},
+	)
+	if cIdx == -1 {
+		return nil, ErrFireflyConfigNotFound
+	}
+
+	return list[cIdx], nil
 }
 
 // SplitTicketConfig holds configuration for splitting a transaction.
