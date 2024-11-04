@@ -75,15 +75,21 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.Logger.Debug("Transaction meets the requirements", "transaction", t)
+	zeroWithDelta := math.Pow10(-*t.ForeignCurrencyDecimalPlaces)
+	division := math.Floor(foreignAmount / config.SplitAmount)
+	if division <= zeroWithDelta {
+		app.Logger.Debug("No need to update the transaction: division lesser than zero", "division", division)
+		app.clientResponse(w, r, http.StatusNoContent)
+		return
+	}
 	// Update this transaction setting the amount to the amount / config.SplitAmount result
-	err = app.updateSplitTransaction(&t, content.ID, webhookMessage.Uuid, foreignAmount, config.SplitAmount)
+	err = app.updateSplitTransaction(&t, content.ID, webhookMessage.Uuid, division, config.SplitAmount)
 	if err != nil {
 		app.serverError(w, r, err)
 		return
 	}
 
 	modulo := math.Mod(foreignAmount, config.SplitAmount)
-	zeroWithDelta := math.Pow10(-*t.ForeignCurrencyDecimalPlaces)
 	if modulo <= zeroWithDelta {
 		app.Logger.Debug("No need to create new transaction: remainder lesser than zero", "modulo", modulo)
 		app.clientResponse(w, r, http.StatusNoContent)

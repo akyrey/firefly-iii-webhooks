@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 
 	"github.com/akyrey/firefly-iii-webhooks/pkg/firefly"
@@ -28,8 +27,13 @@ func (app *Application) parseRequestMessage(r *http.Request) (body []byte, webho
 }
 
 // updateSplitTransaction will update the transaction with the new amount and foreign amount.
-func (app *Application) updateSplitTransaction(t *models.Transaction, contentID int, messageUUID string, foreignAmount, splitAmount float64) error {
-	division := math.Floor(foreignAmount / splitAmount)
+func (app *Application) updateSplitTransaction(
+	t *models.Transaction,
+	contentID int,
+	messageUUID string,
+	division float64,
+	splitAmount float64,
+) error {
 	updatedForeignAmountF := division * splitAmount
 	updatedAmount := fmt.Sprintf("%.[2]*[1]f", division, t.CurrencyDecimalPlaces)
 	updatedForeignAmount := fmt.Sprintf("%.[2]*[1]f", updatedForeignAmountF, *t.ForeignCurrencyDecimalPlaces)
