@@ -30,6 +30,11 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 		app.clientError(w, r, http.StatusInternalServerError)
 		return
 	}
+	if config.SplitAmount == 0 {
+		app.Logger.Debug("Invalid split amount", "amount", config.SplitAmount)
+		app.clientError(w, r, http.StatusBadRequest)
+		return
+	}
 	app.Logger.Debug("Found configuration", "config", config)
 
 	app.Logger.Debug("Verifying signature", "signature", r.Header.Get("Signature"))
@@ -83,7 +88,7 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Update this transaction setting the amount to the amount / config.SplitAmount result
-	err = app.updateSplitTransaction(&t, content.ID, webhookMessage.Uuid, division, config.SplitAmount)
+	updated, err := app.updateSplitTransaction(&t, content.ID, division, config.SplitAmount)
 	if err != nil {
 		app.serverError(w, r, err)
 		return
@@ -96,9 +101,8 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// If the module isn't 0, create a new transaction with the module amount
-	err = app.createSplitTransaction(
+	created, err := app.createSplitTransaction(
 		&t,
-		webhookMessage.Uuid,
 		modulo,
 		config.DestinationCurrencyDecimalPlaces,
 		config.DestinationAccountId,
@@ -108,6 +112,13 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, r, err)
 		return
 	}
+
+	err = app.FireflyClient.LinkTransactions(config.LinkTypeId, updated.Data.ID, created.Data.ID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
 	app.Logger.Debug("Webhook completed successfully")
 	app.clientResponse(w, r, http.StatusNoContent)
 }

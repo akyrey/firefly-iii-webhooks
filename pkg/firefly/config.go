@@ -79,6 +79,7 @@ type SplitTicketConfig struct {
 	DestinationCurrencyId            int             `json:"destination_currency_id"`
 	DestinationCurrencyDecimalPlaces int             `json:"destination_currency_decimal_places"`
 	SplitAmount                      float64         `json:"split_amount"`
+	LinkTypeId                       string          `json:"link_type_id"`
 }
 
 // AppliesTo checks if the configuration applies to the given message.
@@ -110,3 +111,6 @@ const (
 	DEPOSIT    TransactionType = "deposit"
 	TRANSFER   TransactionType = "transfer"
 )
+
+// WEBHOOK_TAG_PREFIX is the prefix used for all tags we are going to attach to transactions.
+const WEBHOOK_TAG_PREFIX = "Webhook:"
