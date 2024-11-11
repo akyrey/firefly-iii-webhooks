@@ -30,10 +30,9 @@ func (app *Application) parseRequestMessage(r *http.Request) (body []byte, webho
 func (app *Application) updateSplitTransaction(
 	t *models.Transaction,
 	contentID int,
-	messageUUID string,
 	division float64,
 	splitAmount float64,
-) error {
+) (*models.UpsertTransactionResponse, error) {
 	updatedForeignAmountF := division * splitAmount
 	updatedAmount := fmt.Sprintf("%.[2]*[1]f", division, t.CurrencyDecimalPlaces)
 	updatedForeignAmount := fmt.Sprintf("%.[2]*[1]f", updatedForeignAmountF, *t.ForeignCurrencyDecimalPlaces)
@@ -41,12 +40,13 @@ func (app *Application) updateSplitTransaction(
 	err := copier.Copy(&tToUpdate, t)
 	if err != nil {
 		app.Logger.Error("Failed copying transaction", "error", err)
-		return err
+		return nil, err
 	}
 
 	tToUpdate.Amount = updatedAmount
 	tToUpdate.ForeignAmount = &updatedForeignAmount
-	tToUpdate.Tags = append(tToUpdate.Tags, "Webhook: split_ticket", fmt.Sprintf("Webhook uuid: %s", messageUUID))
+	tToUpdate.Tags = append(tToUpdate.Tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.SplitTicket))
+	tToUpdate.TransactionJournalID = 0
 	app.Logger.Debug("Updating transaction amount, foreign amount and tags", "transaction", tToUpdate)
 	return app.FireflyClient.UpdateTransaction(
 		contentID,
@@ -60,27 +60,26 @@ func (app *Application) updateSplitTransaction(
 // createSplitTransaction will create a new transaction with the remaining amount.
 func (app *Application) createSplitTransaction(
 	t *models.Transaction,
-	messageUUID string,
 	modulo float64,
 	currencyDecimalPlaces int,
 	accountID int,
 	currencyID int,
-) error {
+) (*models.UpsertTransactionResponse, error) {
 	moduloAmount := fmt.Sprintf("%.[2]*[1]f", modulo, currencyDecimalPlaces)
-	var tToCreate models.Transaction
-	err := copier.Copy(&tToCreate, &t)
-	if err != nil {
-		return err
+	tToCreate := models.Transaction{
+		Amount:        moduloAmount,
+		SourceID:      accountID,
+		CurrencyID:    currencyID,
+		DestinationID: t.DestinationID,
+		User:          t.User,
+		Type:          string(firefly.WITHDRAWAL),
+		Description:   t.Description,
+		BudgetID:      t.BudgetID,
+		CategoryID:    t.CategoryID,
+		Tags:          append(t.Tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.SplitTicket)),
+		Date:          t.Date,
+		Notes:         t.Notes,
 	}
-	tToCreate.Amount = moduloAmount
-	tToCreate.SourceID = accountID
-	tToCreate.CurrencyID = currencyID
-	tToCreate.ForeignAmount = nil
-	tToCreate.ForeignCurrencyID = nil
-	tToCreate.ForeignCurrencyCode = nil
-	tToCreate.ForeignCurrencyDecimalPlaces = nil
-	tToCreate.ForeignCurrencySymbol = nil
-	tToCreate.Tags = append(tToCreate.Tags, "Webhook: split_ticket", fmt.Sprintf("Webhook uuid: %s", messageUUID))
 	app.Logger.Debug("Creating transaction", "transaction", tToCreate)
 	return app.FireflyClient.CreateTransaction(&models.StoreTransactionRequest{
 		ApplyRules:           true,

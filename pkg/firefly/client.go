@@ -99,42 +99,94 @@ func (f *Firefly) handleHttpErrorResponse(r *http.Response) error {
 }
 
 // CreateTransaction will create a new transaction in Firefly III.
-func (f *Firefly) CreateTransaction(t *models.StoreTransactionRequest) error {
+func (f *Firefly) CreateTransaction(t *models.StoreTransactionRequest) (*models.UpsertTransactionResponse, error) {
 	url := fmt.Sprintf("%s/api/v1/transactions", f.baseUrl)
 	data, err := json.Marshal(t)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	f.addHeaders(req)
 	r, err := f.httpClient.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer r.Body.Close()
 
 	if r.StatusCode != http.StatusOK {
-		return f.handleHttpErrorResponse(r)
+		return nil, f.handleHttpErrorResponse(r)
 	}
 
-	_, err = io.ReadAll(r.Body)
-	return err
+	res, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var upsertTransaction models.UpsertTransactionResponse
+	err = json.Unmarshal(res, &upsertTransaction)
+	if err != nil {
+		return nil, err
+	}
+
+	return &upsertTransaction, nil
 }
 
 // UpdateTransaction will create a new transaction in Firefly III.
-func (f *Firefly) UpdateTransaction(id int, t *models.UpdateTransactionRequest) error {
+func (f *Firefly) UpdateTransaction(id int, t *models.UpdateTransactionRequest) (*models.UpsertTransactionResponse, error) {
 	url := fmt.Sprintf("%s/api/v1/transactions/%d", f.baseUrl, id)
 	data, err := json.Marshal(t)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
+	}
+
+	f.addHeaders(req)
+	r, err := f.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode != http.StatusOK {
+		return nil, f.handleHttpErrorResponse(r)
+	}
+
+	res, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var upsertTransaction models.UpsertTransactionResponse
+	err = json.Unmarshal(res, &upsertTransaction)
+	if err != nil {
+		return nil, err
+	}
+
+	return &upsertTransaction, nil
+}
+
+// LinkTransactions will create a new link between two transactions in Firefly III.
+func (f *Firefly) LinkTransactions(linkTypeID string, inwardID string, outwardID string) error {
+	url := fmt.Sprintf("%s/api/v1/transaction-links", f.baseUrl)
+	data, err := json.Marshal(models.StoreLinkRequest{
+		LinkTypeID: linkTypeID,
+		InwardID:   inwardID,
+		OutwardID:  outwardID,
+	})
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}
