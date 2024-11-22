@@ -83,7 +83,7 @@ func (app *Application) createSplitTransaction(
 	app.Logger.Debug("Creating transaction", "transaction", tToCreate)
 	return app.FireflyClient.CreateTransaction(&models.StoreTransactionRequest{
 		ApplyRules:           true,
-		ErrorIfDuplicateHash: false,
+		ErrorIfDuplicateHash: true,
 		FireWebhooks:         true,
 		Transactions:         []models.Transaction{tToCreate},
 	})
