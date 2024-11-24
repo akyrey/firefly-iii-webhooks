@@ -99,7 +99,7 @@ func (msg *WebhookMessage) VerifySignature(signatureHeader, body, secret string)
 }
 
 type WebhookMessageTransaction struct {
+	Transactions []models.Transaction `json:"transactions"`
 	ID           int                  `json:"id"`
 	User         int                  `json:"user"`
-	Transactions []models.Transaction `json:"transactions"`
 }

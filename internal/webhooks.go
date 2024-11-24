@@ -47,7 +47,7 @@ func (app *Application) updateSplitTransaction(
 	tToUpdate.ForeignAmount = &updatedForeignAmount
 	tToUpdate.Tags = append(tToUpdate.Tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.SplitTicket))
 	tToUpdate.TransactionJournalID = 0
-	app.Logger.Debug("Updating transaction amount, foreign amount and tags", "transaction", tToUpdate)
+	app.Logger.Debug("Updating transaction amount, foreign amount and tags", "contentID", contentID, "transaction", tToUpdate)
 	return app.FireflyClient.UpdateTransaction(
 		contentID,
 		&models.UpdateTransactionRequest{

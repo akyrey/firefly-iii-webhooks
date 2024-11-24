@@ -74,12 +74,12 @@ type SplitTicketConfig struct {
 	Response                         WebhookResponse `json:"response"`
 	Secret                           string          `json:"secret"`
 	Type                             TransactionType `json:"type"`
+	LinkTypeId                       string          `json:"link_type_id"`
 	SourceAccountId                  int             `json:"source_account_id"`
 	DestinationAccountId             int             `json:"destination_account_id"`
 	DestinationCurrencyId            int             `json:"destination_currency_id"`
 	DestinationCurrencyDecimalPlaces int             `json:"destination_currency_decimal_places"`
 	SplitAmount                      float64         `json:"split_amount"`
-	LinkTypeId                       string          `json:"link_type_id"`
 }
 
 // AppliesTo checks if the configuration applies to the given message.

@@ -54,7 +54,7 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 
 	count := len(content.Transactions)
 	// Only apply to single transactions and to transactions with foreing amount and currency
-	if count == 0 || count > 1 {
+	if count != 1 {
 		app.Logger.Debug("Found zero or more than one transactions", "count", count)
 		app.clientResponse(w, r, http.StatusNoContent)
 		return

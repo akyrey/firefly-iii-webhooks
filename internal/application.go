@@ -10,10 +10,10 @@ import (
 )
 
 type Application struct {
-	Config        Config
 	FireflyClient *firefly.Firefly
 	FireflyConfig *firefly.Config
 	Logger        *slog.Logger
+	Config        Config
 }
 
 func (a Application) serverError(w http.ResponseWriter, r *http.Request, err error) {
