@@ -13,6 +13,7 @@ type ConfigType string
 
 const (
 	SplitTicket ConfigType = "split_ticket"
+	Cashback    ConfigType = "cashback"
 )
 
 // Config holds configuration regarding Firefly webhooks.
@@ -44,6 +45,16 @@ func (c *Config) UnmarshalJSON(b []byte) error {
 				splitTicketList = append(splitTicketList, splitTicket)
 			}
 			(*c)[t] = splitTicketList
+		case Cashback:
+			var cashbackList []ConfigValue
+			for _, raw := range list {
+				var cashback CashbackConfig
+				if err := json.Unmarshal(raw, &cashback); err != nil {
+					return err
+				}
+				cashbackList = append(cashbackList, cashback)
+			}
+			(*c)[t] = cashbackList
 		}
 	}
 	return nil
@@ -88,6 +99,30 @@ func (c SplitTicketConfig) AppliesTo(msg WebhookMessage) bool {
 		c.Response == msg.Response &&
 		c.Type == WITHDRAWAL &&
 		c.SourceAccountId != c.DestinationAccountId
+}
+
+// CashbackConfig holds configuration for creating a cashback transaction.
+type CashbackConfig struct {
+	Trigger                          WebhookTrigger  `json:"trigger"`
+	Response                         WebhookResponse `json:"response"`
+	Secret                           string          `json:"secret"`
+	Type                             TransactionType `json:"type"`
+	Title                            string          `json:"title"`
+	SourceMustHaveTag                string          `json:"source_must_have_tag"`
+	LinkTypeId                       string          `json:"link_type_id"`
+	SourceAccountId                  int             `json:"source_account_id"`
+	DestinationAccountId             int             `json:"destination_account_id"`
+	Amount                           float64         `json:"amount"`
+	CategoryID                       int             `json:"category_id"`
+	DestinationCurrencyId            int             `json:"destination_currency_id"`
+	DestinationCurrencyDecimalPlaces int             `json:"destination_currency_decimal_places"`
+}
+
+// AppliesTo checks if the configuration applies to the given message.
+func (c CashbackConfig) AppliesTo(msg WebhookMessage) bool {
+	return c.Trigger == msg.Trigger &&
+		c.Response == msg.Response &&
+		c.Type == WITHDRAWAL
 }
 
 // ReadConfig reads the configuration from a JSON file.
