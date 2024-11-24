@@ -19,6 +19,7 @@ func (app *Application) Routes(config Config) http.Handler {
 
 	mux.Handle("/api/v1/webhook/split-ticket", protected.ThenFunc(app.splitTicket))
 	mux.Handle("/api/v1/webhook/cashback", protected.ThenFunc(app.cashback))
+	mux.Handle("/api/v1/webhook/transfer", protected.ThenFunc(app.transfer))
 
 	return protected.Then(mux)
 }
