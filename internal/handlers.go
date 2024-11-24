@@ -124,6 +124,8 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	app.clientResponse(w, r, http.StatusNoContent)
 }
 
+// cashback will create a new deposit transaction with a static amount
+// each with a different amount and currency as defined in the configuration.
 func (app *Application) cashback(w http.ResponseWriter, r *http.Request) {
 	body, webhookMessage, err := app.parseRequestMessage(r)
 	if err != nil {
@@ -166,6 +168,7 @@ func (app *Application) cashback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var transactionIDToLink *string
 	for _, t := range content.Transactions {
 		if t.SourceID != config.SourceAccountId {
 			app.Logger.Debug("Transactions source id different from configured one", "transaction", t)
@@ -183,13 +186,17 @@ func (app *Application) cashback(w http.ResponseWriter, r *http.Request) {
 			app.serverError(w, r, err)
 			return
 		}
-		err = app.FireflyClient.LinkTransactions(config.LinkTypeId, strconv.Itoa(content.ID), created.Data.ID)
+		transactionIDToLink = &created.Data.ID
+	}
+
+	if transactionIDToLink != nil {
+		err = app.FireflyClient.LinkTransactions(config.LinkTypeId, strconv.Itoa(content.ID), *transactionIDToLink)
 		if err != nil {
 			app.serverError(w, r, err)
 			return
 		}
-
-		app.Logger.Debug("Webhook completed successfully")
-		app.clientResponse(w, r, http.StatusNoContent)
 	}
+
+	app.Logger.Debug("Webhook completed successfully")
+	app.clientResponse(w, r, http.StatusNoContent)
 }
