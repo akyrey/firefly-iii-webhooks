@@ -107,11 +107,42 @@ func (app *Application) createCashbackTransaction(
 	tags = append(tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.Cashback))
 	tToCreate := models.Transaction{
 		Amount:        cashbackAmount,
-		SourceID:      config.SourceAccountId,
+		SourceID:      config.DepositSourceAccountId,
 		CurrencyID:    config.DestinationCurrencyId,
 		DestinationID: config.DestinationAccountId,
 		User:          t.User,
 		Type:          string(firefly.DEPOSIT),
+		Description:   config.Title,
+		BudgetID:      t.BudgetID,
+		CategoryID:    &config.CategoryID,
+		Tags:          tags,
+		Date:          t.Date,
+		Notes:         t.Notes,
+	}
+	app.Logger.Debug("Creating transaction", "transaction", tToCreate)
+	return app.FireflyClient.CreateTransaction(&models.StoreTransactionRequest{
+		ApplyRules:           true,
+		ErrorIfDuplicateHash: true,
+		FireWebhooks:         true,
+		Transactions:         []models.Transaction{tToCreate},
+	})
+}
+
+// createTransferTransaction will create a new transaction with the cashback amount.
+func (app *Application) createTransferTransaction(
+	t *models.Transaction,
+	amount float64,
+	config firefly.TransferConfig,
+) (*models.UpsertTransactionResponse, error) {
+	transferAmount := fmt.Sprintf("%.[2]*[1]f", amount, config.DestinationCurrencyDecimalPlaces)
+	tags := []string{fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.Transfer)}
+	tToCreate := models.Transaction{
+		Amount:        transferAmount,
+		SourceID:      config.SourceAccountId,
+		CurrencyID:    config.DestinationCurrencyId,
+		DestinationID: config.DestinationAccountId,
+		User:          t.User,
+		Type:          string(firefly.TRANSFER),
 		Description:   config.Title,
 		BudgetID:      t.BudgetID,
 		CategoryID:    &config.CategoryID,

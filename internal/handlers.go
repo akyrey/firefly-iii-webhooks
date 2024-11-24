@@ -63,7 +63,7 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 
 	t := content.Transactions[0]
 	if t.SourceID != config.SourceAccountId {
-		app.Logger.Debug("Transaction source id different from configured one", "transaction", t)
+		app.Logger.Debug("Transaction source id different from configured one", "transaction", t, "config", config)
 		app.clientResponse(w, r, http.StatusNoContent)
 		return
 	}
@@ -171,7 +171,7 @@ func (app *Application) cashback(w http.ResponseWriter, r *http.Request) {
 	var transactionIDToLink *string
 	for _, t := range content.Transactions {
 		if t.SourceID != config.SourceAccountId {
-			app.Logger.Debug("Transactions source id different from configured one", "transaction", t)
+			app.Logger.Debug("Transactions source id different from configured one", "transaction", t, "config", config)
 			app.clientResponse(w, r, http.StatusNoContent)
 			return
 		}
@@ -180,6 +180,100 @@ func (app *Application) cashback(w http.ResponseWriter, r *http.Request) {
 		}
 		created, err := app.createCashbackTransaction(
 			&t,
+			config,
+		)
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+		transactionIDToLink = &created.Data.ID
+	}
+
+	if transactionIDToLink != nil {
+		err = app.FireflyClient.LinkTransactions(config.LinkTypeId, strconv.Itoa(content.ID), *transactionIDToLink)
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+	}
+
+	app.Logger.Debug("Webhook completed successfully")
+	app.clientResponse(w, r, http.StatusNoContent)
+}
+
+// transfer will create a new transfer transaction from a source account to a destination account with an amount
+// defined by the transaction triggering the webhook.
+func (app *Application) transfer(w http.ResponseWriter, r *http.Request) {
+	body, webhookMessage, err := app.parseRequestMessage(r)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	configValue, err := app.FireflyConfig.FindConfig(firefly.Transfer, webhookMessage)
+	if err != nil {
+		app.Logger.Debug("No configuration found", "error", err)
+		app.clientError(w, r, http.StatusNotFound)
+		return
+	}
+	config, ok := configValue.(firefly.TransferConfig)
+	if !ok {
+		app.Logger.Error("Invalid configuration type", "config", configValue)
+		app.clientError(w, r, http.StatusInternalServerError)
+		return
+	}
+	app.Logger.Debug("Found configuration", "config", config)
+
+	app.Logger.Debug("Verifying signature", "signature", r.Header.Get("Signature"))
+	err = webhookMessage.VerifySignature(r.Header.Get("Signature"), string(body), config.Secret)
+	if err != nil {
+		app.Logger.Error("Failed validating signature", "header", r.Header.Get("Signature"), "error", err)
+		app.clientError(w, r, http.StatusBadRequest)
+		return
+	}
+
+	content, ok := webhookMessage.Content.(firefly.WebhookMessageTransaction)
+	if !ok {
+		app.Logger.Error("Invalid content type", "content", webhookMessage.Content)
+		app.clientError(w, r, http.StatusBadRequest)
+		return
+	}
+
+	var transactionIDToLink *string
+	for _, t := range content.Transactions {
+		sourceID := t.SourceID
+		// If it's a deposit, the source id is the transaction destination id
+		if config.Type == firefly.DEPOSIT {
+			sourceID = t.DestinationID
+		}
+		if sourceID != config.SourceAccountId {
+			app.Logger.Debug("Transactions source id different from configured one", "transaction", t, "config", config)
+			app.clientResponse(w, r, http.StatusNoContent)
+			return
+		}
+		if !slices.Contains(t.Tags, config.SourceMustHaveTag) {
+			continue
+		}
+		amount := 0.0
+		zeroWithDelta := math.Pow10(-t.CurrencyDecimalPlaces)
+		if config.FixedAmount != nil {
+			amount = *config.FixedAmount
+		} else if config.ModuloAmount != nil {
+			transactionAmount, err := strconv.ParseFloat(strings.TrimSpace(t.Amount), 64)
+			if err != nil {
+				app.Logger.Error("Invalid transaction amount", "amount", t.Amount)
+				app.clientError(w, r, http.StatusBadRequest)
+				return
+			}
+			amount = *config.ModuloAmount - math.Mod(transactionAmount, *config.ModuloAmount)
+		}
+		if amount <= zeroWithDelta {
+			app.Logger.Debug("No need to create new transaction: remainder lesser than zero", "modulo", amount)
+			continue
+		}
+		created, err := app.createTransferTransaction(
+			&t,
+			amount,
 			config,
 		)
 		if err != nil {
