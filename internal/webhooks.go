@@ -8,6 +8,7 @@ import (
 
 	"github.com/akyrey/firefly-iii-webhooks/pkg/firefly"
 	"github.com/akyrey/firefly-iii-webhooks/pkg/firefly/models"
+	"github.com/akyrey/firefly-iii-webhooks/pkg/utils"
 	"github.com/jinzhu/copier"
 )
 
@@ -77,6 +78,43 @@ func (app *Application) createSplitTransaction(
 		BudgetID:      t.BudgetID,
 		CategoryID:    t.CategoryID,
 		Tags:          append(t.Tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.SplitTicket)),
+		Date:          t.Date,
+		Notes:         t.Notes,
+	}
+	app.Logger.Debug("Creating transaction", "transaction", tToCreate)
+	return app.FireflyClient.CreateTransaction(&models.StoreTransactionRequest{
+		ApplyRules:           true,
+		ErrorIfDuplicateHash: true,
+		FireWebhooks:         true,
+		Transactions:         []models.Transaction{tToCreate},
+	})
+}
+
+// createCashbackTransaction will create a new transaction with the cashback amount.
+func (app *Application) createCashbackTransaction(
+	t *models.Transaction,
+	config firefly.CashbackConfig,
+) (*models.UpsertTransactionResponse, error) {
+	cashbackAmount := fmt.Sprintf("%.[2]*[1]f", config.Amount, config.DestinationCurrencyDecimalPlaces)
+	// We need to filter mustHaveTag to avoid creating an infinite loop
+	tags := append(t.Tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.Cashback))
+	tags = utils.Filter(
+		tags,
+		func(tag string) bool {
+			return tag != config.SourceMustHaveTag
+		},
+	)
+	tToCreate := models.Transaction{
+		Amount:        cashbackAmount,
+		SourceID:      config.SourceAccountId,
+		CurrencyID:    config.DestinationCurrencyId,
+		DestinationID: config.DestinationAccountId,
+		User:          t.User,
+		Type:          string(firefly.DEPOSIT),
+		Description:   config.Title,
+		BudgetID:      t.BudgetID,
+		CategoryID:    &config.CategoryID,
+		Tags:          tags,
 		Date:          t.Date,
 		Notes:         t.Notes,
 	}

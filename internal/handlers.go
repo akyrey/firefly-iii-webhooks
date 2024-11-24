@@ -3,6 +3,7 @@ package internal
 import (
 	"math"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -121,4 +122,74 @@ func (app *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 
 	app.Logger.Debug("Webhook completed successfully")
 	app.clientResponse(w, r, http.StatusNoContent)
+}
+
+func (app *Application) cashback(w http.ResponseWriter, r *http.Request) {
+	body, webhookMessage, err := app.parseRequestMessage(r)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	configValue, err := app.FireflyConfig.FindConfig(firefly.Cashback, webhookMessage)
+	if err != nil {
+		app.Logger.Debug("No configuration found", "error", err)
+		app.clientError(w, r, http.StatusNotFound)
+		return
+	}
+	config, ok := configValue.(firefly.CashbackConfig)
+	if !ok {
+		app.Logger.Error("Invalid configuration type", "config", configValue)
+		app.clientError(w, r, http.StatusInternalServerError)
+		return
+	}
+
+	if config.Amount <= 0 {
+		app.Logger.Debug("Invalid configured amount", "amount", config.Amount)
+		app.clientError(w, r, http.StatusBadRequest)
+		return
+	}
+	app.Logger.Debug("Found configuration", "config", config)
+
+	app.Logger.Debug("Verifying signature", "signature", r.Header.Get("Signature"))
+	err = webhookMessage.VerifySignature(r.Header.Get("Signature"), string(body), config.Secret)
+	if err != nil {
+		app.Logger.Error("Failed validating signature", "header", r.Header.Get("Signature"), "error", err)
+		app.clientError(w, r, http.StatusBadRequest)
+		return
+	}
+
+	content, ok := webhookMessage.Content.(firefly.WebhookMessageTransaction)
+	if !ok {
+		app.Logger.Error("Invalid content type", "content", webhookMessage.Content)
+		app.clientError(w, r, http.StatusBadRequest)
+		return
+	}
+
+	for _, t := range content.Transactions {
+		if t.SourceID != config.SourceAccountId {
+			app.Logger.Debug("Transactions source id different from configured one", "transaction", t)
+			app.clientResponse(w, r, http.StatusNoContent)
+			return
+		}
+		if !slices.Contains(t.Tags, config.SourceMustHaveTag) {
+			continue
+		}
+		created, err := app.createCashbackTransaction(
+			&t,
+			config,
+		)
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+		err = app.FireflyClient.LinkTransactions(config.LinkTypeId, strconv.Itoa(content.ID), created.Data.ID)
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+
+		app.Logger.Debug("Webhook completed successfully")
+		app.clientResponse(w, r, http.StatusNoContent)
+	}
 }
