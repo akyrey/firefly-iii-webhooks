@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/akyrey/firefly-iii-webhooks/pkg/firefly"
 	"github.com/akyrey/firefly-iii-webhooks/pkg/firefly/models"
@@ -96,14 +97,14 @@ func (app *Application) createCashbackTransaction(
 	config firefly.CashbackConfig,
 ) (*models.UpsertTransactionResponse, error) {
 	cashbackAmount := fmt.Sprintf("%.[2]*[1]f", config.Amount, config.DestinationCurrencyDecimalPlaces)
-	// We need to filter mustHaveTag to avoid creating an infinite loop
-	tags := append(t.Tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.Cashback))
-	tags = utils.Filter(
-		tags,
+	// We need to filter mustHaveTag to avoid creating an infinite loop and previously added webhooks tags.
+	tags := utils.Filter(
+		t.Tags,
 		func(tag string) bool {
-			return tag != config.SourceMustHaveTag
+			return tag != config.SourceMustHaveTag && !strings.HasPrefix(tag, firefly.WEBHOOK_TAG_PREFIX)
 		},
 	)
+	tags = append(tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.Cashback))
 	tToCreate := models.Transaction{
 		Amount:        cashbackAmount,
 		SourceID:      config.SourceAccountId,
