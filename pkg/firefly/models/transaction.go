@@ -14,7 +14,7 @@ type Transaction struct {
 	ExternalID                   *int        `json:"external_id,omitempty"`
 	CategoryID                   *int        `json:"category_id"`
 	CategoryName                 *string     `json:"category_name"`
-	BillID                       *int        `json:"bill_id,omitempty"`
+	BillID                       *string     `json:"bill_id,omitempty"`
 	BillName                     *string     `json:"bill_name,omitempty"`
 	BookDate                     *time.Time  `json:"book_date,omitempty"`
 	SourceIban                   *string     `json:"source_iban,omitempty"`
