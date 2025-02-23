@@ -6,7 +6,7 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/justinas/alice v1.2.0
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.34.0
 )
 
 require (
