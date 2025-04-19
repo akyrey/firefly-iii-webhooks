@@ -70,10 +70,10 @@ func parseLogLevel(s string) (slog.Level, error) {
 
 // envToFlag converts THIS_FORMAT to this-format.
 func envToFlag(e string) string {
-	return strings.Replace(strings.ToLower(e), "_", "-", -1)
+	return strings.ReplaceAll(strings.ToLower(e), "_", "-")
 }
 
 // flagToEnv converts this-format to THIS_FORMAT.
 func flagToEnv(f string) string {
-	return strings.Replace(strings.ToUpper(f), "-", "_", -1)
+	return strings.ReplaceAll(strings.ToUpper(f), "-", "_")
 }

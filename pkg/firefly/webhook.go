@@ -15,7 +15,7 @@ import (
 // was fired and what the content of the content field is.
 type WebhookMessage struct {
 	RawContent json.RawMessage `json:"content"`
-	Content    interface{}     `json:"-"`
+	Content    any             `json:"-"`
 	Uuid       string          `json:"uuid"`
 	Trigger    WebhookTrigger  `json:"trigger"`
 	Response   WebhookResponse `json:"response"`
