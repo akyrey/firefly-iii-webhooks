@@ -21,7 +21,7 @@ type Firefly struct {
 	fireflyOpts
 }
 
-// Create a new Firefly with the given configuration.
+// NewFirefly Create a new Firefly with the given configuration.
 func NewFirefly(baseUrl string, opts ...FireflyOption) *Firefly {
 	var options fireflyOpts
 	for _, opt := range opts {
@@ -116,7 +116,9 @@ func (f *Firefly) CreateTransaction(t *models.StoreTransactionRequest) (*models.
 	if err != nil {
 		return nil, err
 	}
-	defer r.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(r.Body)
 
 	if r.StatusCode != http.StatusOK {
 		return nil, f.handleHttpErrorResponse(r)
@@ -154,7 +156,9 @@ func (f *Firefly) UpdateTransaction(id int, t *models.UpdateTransactionRequest) 
 	if err != nil {
 		return nil, err
 	}
-	defer r.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(r.Body)
 
 	if r.StatusCode != http.StatusOK {
 		return nil, f.handleHttpErrorResponse(r)
@@ -196,7 +200,9 @@ func (f *Firefly) LinkTransactions(linkTypeID string, inwardID string, outwardID
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(r.Body)
 
 	if r.StatusCode != http.StatusOK {
 		return f.handleHttpErrorResponse(r)

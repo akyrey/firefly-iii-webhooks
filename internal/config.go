@@ -17,15 +17,15 @@ type Config struct {
 }
 
 const (
-	// HTTP network address the server listens on.
+	// ADDRESS HTTP network address the server listens on.
 	ADDRESS = "addr"
-	// Log message level.
+	// LOG_LEVEL Log message level.
 	LOG_LEVEL = "log-level"
-	// Base URL for the Firefly III API.
+	// BASE_URL Base URL for the Firefly III API.
 	BASE_URL = "firefly-base-url"
-	// JSON configuration file for Firefly webhooks.
+	// CONFIG_FILE JSON configuration file for Firefly webhooks.
 	CONFIG_FILE = "firefly-config"
-	// Firefly III API key to use.
+	// API_KEY Firefly III API key to use.
 	API_KEY = "firefly-api-key"
 )
 

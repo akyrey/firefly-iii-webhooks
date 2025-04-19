@@ -14,22 +14,24 @@ import (
 )
 
 // parseRequestMessage will parse the request message and return the body and the webhook message.
-func (app *Application) parseRequestMessage(r *http.Request) (body []byte, webhookMessage firefly.WebhookMessage, err error) {
+func (a *Application) parseRequestMessage(r *http.Request) (body []byte, webhookMessage firefly.WebhookMessage, err error) {
 	body, err = io.ReadAll(r.Body)
 	if err != nil {
 		return nil, firefly.WebhookMessage{}, err
 	}
-	defer r.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(r.Body)
 	err = json.Unmarshal(body, &webhookMessage)
 	if err != nil {
 		return nil, firefly.WebhookMessage{}, err
 	}
-	app.Logger.Debug("Received body", "body", webhookMessage)
+	a.Logger.Debug("Received body", "body", webhookMessage)
 	return body, webhookMessage, nil
 }
 
 // updateSplitTransaction will update the transaction with the new amount and foreign amount.
-func (app *Application) updateSplitTransaction(
+func (a *Application) updateSplitTransaction(
 	t *models.Transaction,
 	contentID int,
 	division float64,
@@ -41,7 +43,7 @@ func (app *Application) updateSplitTransaction(
 	var tToUpdate models.Transaction
 	err := copier.Copy(&tToUpdate, t)
 	if err != nil {
-		app.Logger.Error("Failed copying transaction", "error", err)
+		a.Logger.Error("Failed copying transaction", "error", err)
 		return nil, err
 	}
 
@@ -49,8 +51,8 @@ func (app *Application) updateSplitTransaction(
 	tToUpdate.ForeignAmount = &updatedForeignAmount
 	tToUpdate.Tags = append(tToUpdate.Tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.SplitTicket))
 	tToUpdate.TransactionJournalID = 0
-	app.Logger.Debug("Updating transaction amount, foreign amount and tags", "contentID", contentID, "transaction", tToUpdate)
-	return app.FireflyClient.UpdateTransaction(
+	a.Logger.Debug("Updating transaction amount, foreign amount and tags", "contentID", contentID, "transaction", tToUpdate)
+	return a.FireflyClient.UpdateTransaction(
 		contentID,
 		&models.UpdateTransactionRequest{
 			ApplyRules:   true,
@@ -60,7 +62,7 @@ func (app *Application) updateSplitTransaction(
 }
 
 // createSplitTransaction will create a new transaction with the remaining amount.
-func (app *Application) createSplitTransaction(
+func (a *Application) createSplitTransaction(
 	t *models.Transaction,
 	modulo float64,
 	currencyDecimalPlaces int,
@@ -82,8 +84,8 @@ func (app *Application) createSplitTransaction(
 		Date:          t.Date,
 		Notes:         t.Notes,
 	}
-	app.Logger.Debug("Creating transaction", "transaction", tToCreate)
-	return app.FireflyClient.CreateTransaction(&models.StoreTransactionRequest{
+	a.Logger.Debug("Creating transaction", "transaction", tToCreate)
+	return a.FireflyClient.CreateTransaction(&models.StoreTransactionRequest{
 		ApplyRules:           true,
 		ErrorIfDuplicateHash: true,
 		FireWebhooks:         true,
@@ -92,7 +94,7 @@ func (app *Application) createSplitTransaction(
 }
 
 // createCashbackTransaction will create a new transaction with the cashback amount.
-func (app *Application) createCashbackTransaction(
+func (a *Application) createCashbackTransaction(
 	t *models.Transaction,
 	config firefly.CashbackConfig,
 ) (*models.UpsertTransactionResponse, error) {
@@ -119,8 +121,8 @@ func (app *Application) createCashbackTransaction(
 		Date:          t.Date,
 		Notes:         t.Notes,
 	}
-	app.Logger.Debug("Creating transaction", "transaction", tToCreate)
-	return app.FireflyClient.CreateTransaction(&models.StoreTransactionRequest{
+	a.Logger.Debug("Creating transaction", "transaction", tToCreate)
+	return a.FireflyClient.CreateTransaction(&models.StoreTransactionRequest{
 		ApplyRules:           true,
 		ErrorIfDuplicateHash: true,
 		FireWebhooks:         true,
@@ -129,7 +131,7 @@ func (app *Application) createCashbackTransaction(
 }
 
 // createTransferTransaction will create a new transaction with the cashback amount.
-func (app *Application) createTransferTransaction(
+func (a *Application) createTransferTransaction(
 	t *models.Transaction,
 	amount float64,
 	config firefly.TransferConfig,
@@ -150,8 +152,8 @@ func (app *Application) createTransferTransaction(
 		Date:          t.Date,
 		Notes:         t.Notes,
 	}
-	app.Logger.Debug("Creating transaction", "transaction", tToCreate)
-	return app.FireflyClient.CreateTransaction(&models.StoreTransactionRequest{
+	a.Logger.Debug("Creating transaction", "transaction", tToCreate)
+	return a.FireflyClient.CreateTransaction(&models.StoreTransactionRequest{
 		ApplyRules:           true,
 		ErrorIfDuplicateHash: true,
 		FireWebhooks:         true,

@@ -169,7 +169,9 @@ func (c TransferConfig) AppliesTo(msg WebhookMessage) bool {
 func ReadConfig(file string) *Config {
 	configFile, err := os.Open(file)
 	assert.NoError(err, "Firefly configuration file should always be provided")
-	defer configFile.Close()
+	defer func(configFile *os.File) {
+		_ = configFile.Close()
+	}(configFile)
 
 	var config Config
 	jsonParser := json.NewDecoder(configFile)

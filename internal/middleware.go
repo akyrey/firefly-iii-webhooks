@@ -7,7 +7,7 @@ import (
 )
 
 // secureHeaders will add secure headers to the response.
-func (app *Application) secureHeaders(next http.Handler) http.Handler {
+func (a *Application) secureHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Security-Policy",
 			"default-src 'self'; style-src 'self' fonts.googleapis.com; font-src fonts.gstatic.com")
@@ -15,14 +15,14 @@ func (app *Application) secureHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "deny")
 		w.Header().Set("X-XSS-Protection", "0")
-		app.Logger.Debug("secure headers set")
+		a.Logger.Debug("secure headers set")
 
 		next.ServeHTTP(w, r)
 	})
 }
 
 // contentTypeHeader will add the json content type header to the response.
-func (app *Application) contentTypeHeader(next http.Handler) http.Handler {
+func (a *Application) contentTypeHeader(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -31,7 +31,7 @@ func (app *Application) contentTypeHeader(next http.Handler) http.Handler {
 }
 
 // logRequest will log the incoming request details.
-func (app *Application) logRequest(next http.Handler) http.Handler {
+func (a *Application) logRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var (
 			ip     = r.RemoteAddr
@@ -39,7 +39,7 @@ func (app *Application) logRequest(next http.Handler) http.Handler {
 			method = r.Method
 			uri    = r.URL.RequestURI()
 		)
-		app.Logger.Info("received request",
+		a.Logger.Info("received request",
 			slog.String("ip", ip),
 			slog.String("proto", proto),
 			slog.String("method", method),
@@ -51,12 +51,12 @@ func (app *Application) logRequest(next http.Handler) http.Handler {
 }
 
 // recoverPanic will catch any panics that occur during the request, log the error and return it.
-func (app *Application) recoverPanic(next http.Handler) http.Handler {
+func (a *Application) recoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
 				w.Header().Set("Connection", "close")
-				app.serverError(w, r, fmt.Errorf("%s", err))
+				a.serverError(w, r, fmt.Errorf("%s", err))
 			}
 		}()
 
