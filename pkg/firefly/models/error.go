@@ -13,7 +13,7 @@ type FireflyErrReply struct {
 
 func (e FireflyErrReply) Error() string {
 	if e.Message != "" {
-		return e.Message
+		return fmt.Sprintf("Error response from Firefly API (status %d - %s): %s", e.Code, e.Status, e.Message)
 	}
 
 	return fmt.Sprintf("Unknown error (status %d - %s)", e.Code, e.Status)
