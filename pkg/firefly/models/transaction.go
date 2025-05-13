@@ -52,10 +52,10 @@ type Transaction struct {
 	Description                  string     `json:"description"`
 	CurrencySymbol               string     `json:"currency_symbol"`
 	Tags                         []string   `json:"tags"`
-	CurrencyID                   int        `json:"currency_id"`
-	SourceID                     int        `json:"source_id"`
-	DestinationID                int        `json:"destination_id"`
-	TransactionJournalID         int        `json:"transaction_journal_id,omitempty"`
+	CurrencyID                   string     `json:"currency_id"`
+	SourceID                     string     `json:"source_id"`
+	DestinationID                string     `json:"destination_id"`
+	TransactionJournalID         string     `json:"transaction_journal_id,omitempty"`
 	User                         int        `json:"user"`
 	CurrencyDecimalPlaces        int        `json:"currency_decimal_places"`
 	Order                        int        `json:"order"`
