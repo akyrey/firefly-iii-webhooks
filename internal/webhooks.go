@@ -50,7 +50,7 @@ func (a *Application) updateSplitTransaction(
 	tToUpdate.Amount = updatedAmount
 	tToUpdate.ForeignAmount = &updatedForeignAmount
 	tToUpdate.Tags = append(tToUpdate.Tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.SplitTicket))
-	tToUpdate.TransactionJournalID = 0
+	tToUpdate.TransactionJournalID = ""
 	a.Logger.Debug("Updating transaction amount, foreign amount and tags", "contentID", contentID, "transaction", tToUpdate)
 	return a.FireflyClient.UpdateTransaction(
 		contentID,
@@ -66,8 +66,8 @@ func (a *Application) createSplitTransaction(
 	t *models.Transaction,
 	modulo float64,
 	currencyDecimalPlaces int,
-	accountID int,
-	currencyID int,
+	accountID string,
+	currencyID string,
 ) (*models.UpsertTransactionResponse, error) {
 	moduloAmount := fmt.Sprintf("%.[2]*[1]f", modulo, currencyDecimalPlaces)
 	tToCreate := models.Transaction{

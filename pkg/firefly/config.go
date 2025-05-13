@@ -97,9 +97,9 @@ type SplitTicketConfig struct {
 	Secret                           string          `json:"secret"`
 	Type                             TransactionType `json:"type"`
 	LinkTypeId                       string          `json:"link_type_id"`
-	SourceAccountId                  int             `json:"source_account_id"`
-	DestinationAccountId             int             `json:"destination_account_id"`
-	DestinationCurrencyId            int             `json:"destination_currency_id"`
+	SourceAccountId                  string          `json:"source_account_id"`
+	DestinationAccountId             string          `json:"destination_account_id"`
+	DestinationCurrencyId            string          `json:"destination_currency_id"`
 	DestinationCurrencyDecimalPlaces int             `json:"destination_currency_decimal_places"`
 	SplitAmount                      float64         `json:"split_amount"`
 }
@@ -121,12 +121,12 @@ type CashbackConfig struct {
 	Title                            string          `json:"title"`
 	SourceMustHaveTag                string          `json:"source_must_have_tag"`
 	LinkTypeId                       string          `json:"link_type_id"`
-	SourceAccountId                  int             `json:"source_account_id"`
-	DepositSourceAccountId           int             `json:"deposit_source_account_id"`
-	DestinationAccountId             int             `json:"destination_account_id"`
+	SourceAccountId                  string          `json:"source_account_id"`
+	DepositSourceAccountId           string          `json:"deposit_source_account_id"`
+	DestinationAccountId             string          `json:"destination_account_id"`
 	Amount                           float64         `json:"amount"`
 	CategoryID                       int             `json:"category_id"`
-	DestinationCurrencyId            int             `json:"destination_currency_id"`
+	DestinationCurrencyId            string          `json:"destination_currency_id"`
 	DestinationCurrencyDecimalPlaces int             `json:"destination_currency_decimal_places"`
 }
 
@@ -148,10 +148,10 @@ type TransferConfig struct {
 	SourceMustHaveTag                string          `json:"source_must_have_tag"`
 	Trigger                          WebhookTrigger  `json:"trigger"`
 	Response                         WebhookResponse `json:"response"`
-	SourceAccountId                  int             `json:"source_account_id"`
-	DestinationAccountId             int             `json:"destination_account_id"`
+	SourceAccountId                  string          `json:"source_account_id"`
+	DestinationAccountId             string          `json:"destination_account_id"`
 	CategoryID                       int             `json:"category_id"`
-	DestinationCurrencyId            int             `json:"destination_currency_id"`
+	DestinationCurrencyId            string          `json:"destination_currency_id"`
 	DestinationCurrencyDecimalPlaces int             `json:"destination_currency_decimal_places"`
 }
 
