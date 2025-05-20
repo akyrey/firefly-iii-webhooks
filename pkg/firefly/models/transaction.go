@@ -11,8 +11,8 @@ type Transaction struct {
 	Latitude                     any        `json:"latitude,omitempty"`
 	InternalReference            any        `json:"internal_reference,omitempty"`
 	InterestDate                 *time.Time `json:"interest_date,omitempty"`
-	ExternalID                   *int       `json:"external_id,omitempty"`
-	CategoryID                   *int       `json:"category_id"`
+	ExternalID                   *string    `json:"external_id,omitempty"`
+	CategoryID                   *string    `json:"category_id"`
 	CategoryName                 *string    `json:"category_name"`
 	BillID                       *string    `json:"bill_id,omitempty"`
 	BillName                     *string    `json:"bill_name,omitempty"`
@@ -22,7 +22,7 @@ type Transaction struct {
 	SepaEp                       *string    `json:"sepa_ep,omitempty"`
 	DestinationIban              *string    `json:"destination_iban,omitempty"`
 	SepaDb                       *string    `json:"sepa_db,omitempty"`
-	BunqPaymentID                *int       `json:"bunq_payment_id,omitempty"`
+	BunqPaymentID                *string    `json:"bunq_payment_id,omitempty"`
 	SepaCtOp                     *string    `json:"sepa_ct_op,omitempty"`
 	DueDate                      *time.Time `json:"due_date,omitempty"`
 	ProcessDate                  *time.Time `json:"process_date,omitempty"`
@@ -31,15 +31,15 @@ type Transaction struct {
 	InvoiceDate                  *time.Time `json:"invoice_date,omitempty"`
 	ForeignCurrencyID            *string    `json:"foreign_currency_id,omitempty"`
 	ForeignCurrencySymbol        *string    `json:"foreign_currency_symbol,omitempty"`
-	SepaCtID                     *int       `json:"sepa_ct_id,omitempty"`
+	SepaCtID                     *string    `json:"sepa_ct_id,omitempty"`
 	SepaCountry                  *string    `json:"sepa_country,omitempty"`
 	BudgetID                     *string    `json:"budget_id,omitempty"`
 	ForeignCurrencyDecimalPlaces *int       `json:"foreign_currency_decimal_places,omitempty"`
 	SepaCi                       *string    `json:"sepa_ci,omitempty"`
 	SepaCc                       *string    `json:"sepa_cc,omitempty"`
 	Notes                        *string    `json:"notes,omitempty"`
-	SepaBatchID                  *int       `json:"sepa_batch_id,omitempty"`
-	RecurrenceID                 *int       `json:"recurrence_id,omitempty"`
+	SepaBatchID                  *string    `json:"sepa_batch_id,omitempty"`
+	RecurrenceID                 *string    `json:"recurrence_id,omitempty"`
 	PaymentDate                  *time.Time `json:"payment_date,omitempty"`
 	DestinationName              string     `json:"destination_name"`
 	SourceName                   string     `json:"source_name"`
