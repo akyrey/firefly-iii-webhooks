@@ -125,7 +125,7 @@ type CashbackConfig struct {
 	DepositSourceAccountId           string          `json:"deposit_source_account_id"`
 	DestinationAccountId             string          `json:"destination_account_id"`
 	Amount                           float64         `json:"amount"`
-	CategoryID                       int             `json:"category_id"`
+	CategoryID                       string          `json:"category_id"`
 	DestinationCurrencyId            string          `json:"destination_currency_id"`
 	DestinationCurrencyDecimalPlaces int             `json:"destination_currency_decimal_places"`
 }
@@ -150,7 +150,7 @@ type TransferConfig struct {
 	Response                         WebhookResponse `json:"response"`
 	SourceAccountId                  string          `json:"source_account_id"`
 	DestinationAccountId             string          `json:"destination_account_id"`
-	CategoryID                       int             `json:"category_id"`
+	CategoryID                       string          `json:"category_id"`
 	DestinationCurrencyId            string          `json:"destination_currency_id"`
 	DestinationCurrencyDecimalPlaces int             `json:"destination_currency_decimal_places"`
 }

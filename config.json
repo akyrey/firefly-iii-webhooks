@@ -28,7 +28,7 @@
       "destination_currency_id": "1",
       "destination_currency_decimal_places": 2,
       "title": "Satispay cashback",
-      "category_id": 1,
+      "category_id": "1",
       "amount": 0.02,
       "link_type_id": "1"
     }
@@ -46,7 +46,7 @@
       "destination_currency_id": "1",
       "destination_currency_decimal_places": 2,
       "title": "Trasferimento cashback Satispay",
-      "category_id": 3,
+      "category_id": "3",
       "fixed_amount": 0.02,
       "link_type_id": "1"
     },
@@ -62,7 +62,7 @@
       "destination_currency_id": "1",
       "destination_currency_decimal_places": 2,
       "title": "Trasferimento resto Satispay",
-      "category_id": 3,
+      "category_id": "3",
       "modulo_amount": 1.00,
       "link_type_id": "1"
     }
