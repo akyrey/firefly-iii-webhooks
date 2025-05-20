@@ -33,7 +33,7 @@ type Transaction struct {
 	ForeignCurrencySymbol        *string    `json:"foreign_currency_symbol,omitempty"`
 	SepaCtID                     *int       `json:"sepa_ct_id,omitempty"`
 	SepaCountry                  *string    `json:"sepa_country,omitempty"`
-	BudgetID                     *int       `json:"budget_id,omitempty"`
+	BudgetID                     *string    `json:"budget_id,omitempty"`
 	ForeignCurrencyDecimalPlaces *int       `json:"foreign_currency_decimal_places,omitempty"`
 	SepaCi                       *string    `json:"sepa_ci,omitempty"`
 	SepaCc                       *string    `json:"sepa_cc,omitempty"`
