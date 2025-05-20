@@ -29,7 +29,7 @@ type Transaction struct {
 	ForeignAmount                *string    `json:"foreign_amount,omitempty"`
 	ForeignCurrencyCode          *string    `json:"foreign_currency_code,omitempty"`
 	InvoiceDate                  *time.Time `json:"invoice_date,omitempty"`
-	ForeignCurrencyID            *int       `json:"foreign_currency_id,omitempty"`
+	ForeignCurrencyID            *string    `json:"foreign_currency_id,omitempty"`
 	ForeignCurrencySymbol        *string    `json:"foreign_currency_symbol,omitempty"`
 	SepaCtID                     *int       `json:"sepa_ct_id,omitempty"`
 	SepaCountry                  *string    `json:"sepa_country,omitempty"`

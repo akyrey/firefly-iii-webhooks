@@ -185,6 +185,7 @@ func (f *Firefly) LinkTransactions(linkTypeID string, inwardID string, outwardID
 		LinkTypeID: linkTypeID,
 		InwardID:   inwardID,
 		OutwardID:  outwardID,
+		Notes:      nil,
 	})
 	if err != nil {
 		return err
