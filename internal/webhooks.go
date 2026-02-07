@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/akyrey/firefly-iii-webhooks/pkg/firefly"
 	"github.com/akyrey/firefly-iii-webhooks/pkg/firefly/models"
@@ -81,7 +82,7 @@ func (a *Application) createSplitTransaction(
 		BudgetID:      t.BudgetID,
 		CategoryID:    t.CategoryID,
 		Tags:          append(t.Tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.SplitTicket)),
-		Date:          t.Date,
+		Date:          t.Date.Add(time.Second),
 		Notes:         t.Notes,
 	}
 	a.Logger.Debug("Creating transaction", "transaction", tToCreate)
