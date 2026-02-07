@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 ## STEP 1 - BUILD
-FROM golang:1.24-alpine AS build
+FROM golang:1.25-alpine AS build
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY ./ ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o /ff-webhooks ./cmd/firefly-iii-webhooks
 
 ## STEP 2 - DEPLOY
-FROM alpine:3.16
+FROM alpine:3.23
 
 WORKDIR /
 

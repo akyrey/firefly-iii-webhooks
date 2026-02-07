@@ -1,6 +1,6 @@
 module github.com/akyrey/firefly-iii-webhooks
 
-go 1.24.2
+go 1.25.7
 
 require (
 	github.com/jinzhu/copier v0.4.0
