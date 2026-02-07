@@ -114,6 +114,7 @@ func (a *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	a.Logger.Debug("Linking transactions", "initial id", updated.Data.ID, "created id", created.Data.ID, "link type", config.LinkTypeId)
 	err = a.FireflyClient.LinkTransactions(config.LinkTypeId, updated.Data.ID, created.Data.ID)
 	if err != nil {
 		a.serverError(w, r, err)
