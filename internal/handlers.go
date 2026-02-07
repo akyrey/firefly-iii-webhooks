@@ -54,7 +54,7 @@ func (a *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	count := len(content.Transactions)
-	// Only apply to single transactions and to transactions with foreing amount and currency
+	// Only apply to single transactions and to transactions with foreign amount and currency
 	if count != 1 {
 		a.Logger.Debug("Found zero or more than one transactions", "count", count)
 		a.clientResponse(w, r, http.StatusNoContent)
@@ -114,11 +114,20 @@ func (a *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.Logger.Debug("Linking transactions", "initial id", updated.Data.ID, "created id", created.Data.ID, "link type", config.LinkTypeId)
-	err = a.FireflyClient.LinkTransactions(config.LinkTypeId, updated.Data.ID, created.Data.ID)
-	if err != nil {
-		a.serverError(w, r, err)
-		return
+	// Link the created transaction with the original one using the configured link type
+	// Here we need the transaction journal id of both transactions
+	if len(updated.Data.Attributes.Transactions) == 1 && len(created.Data.Attributes.Transactions) == 1 {
+		inwardID := updated.Data.Attributes.Transactions[0].TransactionJournalID
+		outwardID := created.Data.Attributes.Transactions[0].TransactionJournalID
+
+		a.Logger.Debug("Linking transactions", "initial id", inwardID, "created id", outwardID, "link type", config.LinkTypeId)
+		err = a.FireflyClient.LinkTransactions(config.LinkTypeId, inwardID, outwardID)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+	} else {
+		a.Logger.Debug("Created transaction has more than one transaction, skipping linking", "created", created)
 	}
 
 	a.Logger.Debug("Webhook completed successfully")
