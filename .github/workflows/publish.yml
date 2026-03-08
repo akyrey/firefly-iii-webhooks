@@ -17,7 +17,7 @@ jobs:
       id-token: write
     steps:
       - name: Set up Docker
-        uses: crazy-max/ghaction-setup-docker@v4
+        uses: crazy-max/ghaction-setup-docker@v5
         with:
           daemon-config: |
             {
