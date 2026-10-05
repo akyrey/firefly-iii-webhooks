@@ -102,7 +102,7 @@ func currentSplitTransaction(foreignAmount string, tags ...string) string {
 		testOriginalJournalID, foreignAmount, encodedTags)
 }
 
-func splitTicketApplication(baseUrl string) *Application {
+func splitTicketApplication(baseUrl string, splitAmounts ...float64) *Application {
 	return newTestApplication(baseUrl, firefly.Config{
 		firefly.SplitTicket: []firefly.ConfigValue{firefly.SplitTicketConfig{
 			Trigger:                          firefly.STORE_TRANSACTION,
@@ -113,15 +113,15 @@ func splitTicketApplication(baseUrl string) *Application {
 			DestinationAccountId:             "4",
 			DestinationCurrencyId:            "1",
 			DestinationCurrencyDecimalPlaces: 2,
-			SplitAmount:                      8,
+			SplitAmounts:                     splitAmounts,
 			LinkTypeId:                       testLinkTypeID,
 		}},
 	})
 }
 
-// signedSplitTicketRequest builds a signed webhook for a ticket withdrawal of 3 tickets worth 26.00 EUR,
+// signedSplitTicketRequest builds a signed webhook for a ticket withdrawal worth the given foreign amount in EUR,
 // shaped like the messages Firefly III v6.7 sends.
-func signedSplitTicketRequest(t *testing.T, trigger firefly.WebhookTrigger) *http.Request {
+func signedSplitTicketRequest(t *testing.T, trigger firefly.WebhookTrigger, foreignAmount string) *http.Request {
 	t.Helper()
 	body := fmt.Sprintf(
 		`{"uuid":"23a7fd16-3a55-4cef-85ae-059c666520b7","user_id":1,"user_group_id":1,"trigger":%q,`+
@@ -134,7 +134,7 @@ func signedSplitTicketRequest(t *testing.T, trigger firefly.WebhookTrigger) *htt
 			`"destination_id":"6","destination_name":"Restaurant","destination_type":"Expense account",`+
 			`"budget_id":"","budget_name":null,"category_id":"","category_name":null,"bill_id":"","bill_name":null,`+
 			`"reconciled":false,"notes":null,"tags":[],"longitude":null,"latitude":null,"zoom_level":null}]}}`,
-		trigger, testGroupID, testOriginalJournalID, splitPayloadForeign, splitSourceAccountID,
+		trigger, testGroupID, testOriginalJournalID, foreignAmount, splitSourceAccountID,
 	)
 	timestamp := "1610738765"
 	mac := hmac.New(sha3.New256, []byte(testSecret))
@@ -149,11 +149,11 @@ func signedSplitTicketRequest(t *testing.T, trigger firefly.WebhookTrigger) *htt
 func TestSplitTicketSplitsUnprocessedTransaction(t *testing.T) {
 	// Arrange
 	srv, fake := newSplitFirefly(t, http.StatusOK, currentSplitTransaction(splitPayloadForeign))
-	app := splitTicketApplication(srv.URL)
+	app := splitTicketApplication(srv.URL, 8)
 	rec := httptest.NewRecorder()
 
 	// Act
-	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.STORE_TRANSACTION))
+	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.STORE_TRANSACTION, splitPayloadForeign))
 
 	// Assert
 	assert.Equal(t, http.StatusNoContent, rec.Code)
@@ -184,14 +184,78 @@ func TestSplitTicketSplitsUnprocessedTransaction(t *testing.T) {
 	}, link)
 }
 
-func TestSplitTicketSkipsTransactionAlreadySplit(t *testing.T) {
-	// Arrange: Firefly replays a stored message for a transaction this webhook already updated.
-	srv, fake := newSplitFirefly(t, http.StatusOK, currentSplitTransaction("24.00", "Webhook: split_ticket"))
-	app := splitTicketApplication(srv.URL)
+func TestSplitTicketCombinesDenominationsAndCreatesRemainder(t *testing.T) {
+	// Arrange: 66.33 EUR is best covered by 2 tickets of 8 EUR and 5 of 10 EUR.
+	srv, fake := newSplitFirefly(t, http.StatusOK, currentSplitTransaction("66.33"))
+	app := splitTicketApplication(srv.URL, 8, 10)
 	rec := httptest.NewRecorder()
 
 	// Act
-	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.STORE_TRANSACTION))
+	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.STORE_TRANSACTION, "66.33"))
+
+	// Assert
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	writes := fake.writes()
+	require.Len(t, writes, 3)
+
+	var update models.UpdateTransactionRequest
+	require.NoError(t, json.Unmarshal([]byte(writes[0].Body), &update))
+	require.Len(t, update.Transactions, 1)
+	assert.Equal(t, "7", update.Transactions[0].Amount)
+	assert.Equal(t, "66.00", *update.Transactions[0].ForeignAmount)
+
+	var created models.StoreTransactionRequest
+	require.Equal(t, splitTransactionsPath, writes[1].Path)
+	require.NoError(t, json.Unmarshal([]byte(writes[1].Body), &created))
+	require.Len(t, created.Transactions, 1)
+	assert.Equal(t, "0.33", created.Transactions[0].Amount)
+	assert.Equal(t, splitLinksPath, writes[2].Path)
+}
+
+func TestSplitTicketOnlyUpdatesWhenTicketsCoverTheWholeAmount(t *testing.T) {
+	// Arrange: 16 EUR is exactly 2 tickets of 8 EUR.
+	srv, fake := newSplitFirefly(t, http.StatusOK, currentSplitTransaction("16.00"))
+	app := splitTicketApplication(srv.URL, 8, 10)
+	rec := httptest.NewRecorder()
+
+	// Act
+	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.STORE_TRANSACTION, "16.00"))
+
+	// Assert
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	writes := fake.writes()
+	require.Len(t, writes, 1)
+
+	var update models.UpdateTransactionRequest
+	require.Equal(t, http.MethodPut, writes[0].Method)
+	require.NoError(t, json.Unmarshal([]byte(writes[0].Body), &update))
+	require.Len(t, update.Transactions, 1)
+	assert.Equal(t, "2", update.Transactions[0].Amount)
+	assert.Equal(t, "16.00", *update.Transactions[0].ForeignAmount)
+}
+
+func TestSplitTicketSkipsAmountBelowEveryDenomination(t *testing.T) {
+	// Arrange
+	srv, fake := newSplitFirefly(t, http.StatusOK, currentSplitTransaction("7.50"))
+	app := splitTicketApplication(srv.URL, 8, 10)
+	rec := httptest.NewRecorder()
+
+	// Act
+	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.STORE_TRANSACTION, "7.50"))
+
+	// Assert
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Empty(t, fake.writes())
+}
+
+func TestSplitTicketSkipsTransactionAlreadySplit(t *testing.T) {
+	// Arrange: Firefly replays a stored message for a transaction this webhook already updated.
+	srv, fake := newSplitFirefly(t, http.StatusOK, currentSplitTransaction("24.00", "Webhook: split_ticket"))
+	app := splitTicketApplication(srv.URL, 8)
+	rec := httptest.NewRecorder()
+
+	// Act
+	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.STORE_TRANSACTION, splitPayloadForeign))
 
 	// Assert
 	assert.Equal(t, http.StatusNoContent, rec.Code)
@@ -201,11 +265,11 @@ func TestSplitTicketSkipsTransactionAlreadySplit(t *testing.T) {
 func TestSplitTicketSkipsStalePayload(t *testing.T) {
 	// Arrange: the user edited the foreign amount after Firefly stored the message.
 	srv, fake := newSplitFirefly(t, http.StatusOK, currentSplitTransaction("8.00"))
-	app := splitTicketApplication(srv.URL)
+	app := splitTicketApplication(srv.URL, 8)
 	rec := httptest.NewRecorder()
 
 	// Act
-	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.STORE_TRANSACTION))
+	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.STORE_TRANSACTION, splitPayloadForeign))
 
 	// Assert
 	assert.Equal(t, http.StatusNoContent, rec.Code)
@@ -215,11 +279,11 @@ func TestSplitTicketSkipsStalePayload(t *testing.T) {
 func TestSplitTicketAcknowledgesMessagesWithoutMatchingConfig(t *testing.T) {
 	// Arrange: a webhook with several triggers also delivers updates, which are not configured.
 	srv, fake := newSplitFirefly(t, http.StatusOK, currentSplitTransaction(splitPayloadForeign))
-	app := splitTicketApplication(srv.URL)
+	app := splitTicketApplication(srv.URL, 8)
 	rec := httptest.NewRecorder()
 
 	// Act
-	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.UPDATE_TRANSACTION))
+	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.UPDATE_TRANSACTION, splitPayloadForeign))
 
 	// Assert
 	assert.Equal(t, http.StatusNoContent, rec.Code)
@@ -229,11 +293,11 @@ func TestSplitTicketAcknowledgesMessagesWithoutMatchingConfig(t *testing.T) {
 func TestSplitTicketFailsWithoutChangesWhenCurrentStateIsUnavailable(t *testing.T) {
 	// Arrange: an expired API token makes every Firefly call fail.
 	srv, fake := newSplitFirefly(t, http.StatusUnauthorized, "")
-	app := splitTicketApplication(srv.URL)
+	app := splitTicketApplication(srv.URL, 8)
 	rec := httptest.NewRecorder()
 
 	// Act
-	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.STORE_TRANSACTION))
+	app.splitTicket(rec, signedSplitTicketRequest(t, firefly.STORE_TRANSACTION, splitPayloadForeign))
 
 	// Assert
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)

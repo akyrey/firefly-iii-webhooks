@@ -23,8 +23,18 @@ Each configuration depends on the action.
 Split a transaction updating the amount and foreign amount based on configuration and conditionally create a new transaction
 with the same values but the source account and amount.
 
-e.g. When I perform a withdrawal on account X calculate the integer division from the foreign amount updating the transaction
-amount and create a new transaction with the remainder using account Y as source
+e.g. When I perform a withdrawal on account X, find the combination of ticket values (`split_amounts`) covering as much of
+the foreign amount as possible, update the transaction amount to the number of tickets and the foreign amount to their value,
+and create a new transaction with the remainder using account Y as source.
+When several combinations cover the same amount, the one using the fewest tickets wins.
+
+With `"split_amounts": [8, 10]`:
+
+| Foreign amount | Tickets               | Remainder transaction |
+|----------------|-----------------------|-----------------------|
+| 14.00          | 1 (10)                | 4.00                  |
+| 16.00          | 2 (8 + 8)             | none                  |
+| 66.33          | 7 (2 × 8 + 5 × 10)    | 0.33                  |
 
 TODO: add configuration example
 

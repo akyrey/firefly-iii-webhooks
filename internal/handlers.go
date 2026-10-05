@@ -10,8 +10,8 @@ import (
 	"github.com/akyrey/firefly-iii-webhooks/pkg/firefly"
 )
 
-// splitTicket will split a transaction related to an account into 2 transactions
-// each with a different amount and currency as defined in the configuration.
+// splitTicket will split a transaction related to an account into 2 transactions: one paid with the combination
+// of configured ticket amounts covering most of the foreign amount, and one paying the remainder.
 func (a *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	body, webhookMessage, err := a.parseRequestMessage(r)
 	if err != nil {
@@ -32,8 +32,8 @@ func (a *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 		a.clientError(w, r, http.StatusInternalServerError)
 		return
 	}
-	if config.SplitAmount == 0 {
-		a.Logger.Debug("Invalid split amount", "amount", config.SplitAmount)
+	if len(config.SplitAmounts) == 0 {
+		a.Logger.Debug("Invalid split amounts", "amounts", config.SplitAmounts)
 		a.clientError(w, r, http.StatusBadRequest)
 		return
 	}
@@ -94,30 +94,28 @@ func (a *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.Logger.Debug("Transaction meets the requirements", "transaction", t)
-	zeroWithDelta := math.Pow10(-*t.ForeignCurrencyDecimalPlaces)
-	division := math.Floor(foreignAmount / config.SplitAmount)
-	if division <= zeroWithDelta {
-		a.Logger.Debug("No need to update the transaction: division lesser than zero", "division", division)
+	split := splitTickets(foreignAmount, config.SplitAmounts, *t.ForeignCurrencyDecimalPlaces)
+	if split.Tickets == 0 {
+		a.Logger.Debug("No need to update the transaction: amount lower than every split amount", "amount", foreignAmount)
 		a.clientResponse(w, r, http.StatusNoContent)
 		return
 	}
-	// Update this transaction setting the amount to the amount / config.SplitAmount result
-	updated, err := a.updateSplitTransaction(&t, content.ID, division, config.SplitAmount)
+	// Update this transaction setting the amount to the number of tickets and the foreign amount to their value
+	updated, err := a.updateSplitTransaction(&t, content.ID, split)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 
-	modulo := math.Mod(foreignAmount, config.SplitAmount)
-	if modulo <= zeroWithDelta {
-		a.Logger.Debug("No need to create new transaction: remainder lesser than zero", "modulo", modulo)
+	if split.Remainder <= 0 {
+		a.Logger.Debug("No need to create new transaction: tickets cover the whole amount", "split", split)
 		a.clientResponse(w, r, http.StatusNoContent)
 		return
 	}
-	// If the module isn't 0, create a new transaction with the module amount
+	// Create a new transaction paying the remainder with the destination account
 	created, err := a.createSplitTransaction(
 		&t,
-		modulo,
+		split.Remainder,
 		config.DestinationCurrencyDecimalPlaces,
 		config.DestinationAccountId,
 		config.DestinationCurrencyId,

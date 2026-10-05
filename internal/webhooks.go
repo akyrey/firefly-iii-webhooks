@@ -69,16 +69,15 @@ func (a *Application) splitTicketAlreadyHandled(groupID int, payloadForeignAmoun
 	return false, nil
 }
 
-// updateSplitTransaction will update the transaction with the new amount and foreign amount.
+// updateSplitTransaction will update the transaction amount to the number of tickets and the foreign amount
+// to the value they cover.
 func (a *Application) updateSplitTransaction(
 	t *models.Transaction,
 	contentID int,
-	division float64,
-	splitAmount float64,
+	split ticketSplit,
 ) (*models.UpsertTransactionResponse, error) {
-	updatedForeignAmountF := division * splitAmount
-	updatedAmount := fmt.Sprintf("%.[2]*[1]f", division, t.CurrencyDecimalPlaces)
-	updatedForeignAmount := fmt.Sprintf("%.[2]*[1]f", updatedForeignAmountF, *t.ForeignCurrencyDecimalPlaces)
+	updatedAmount := fmt.Sprintf("%.[2]*[1]f", float64(split.Tickets), t.CurrencyDecimalPlaces)
+	updatedForeignAmount := fmt.Sprintf("%.[2]*[1]f", split.Covered, *t.ForeignCurrencyDecimalPlaces)
 	var tToUpdate models.Transaction
 	err := copier.Copy(&tToUpdate, t)
 	if err != nil {
@@ -103,14 +102,14 @@ func (a *Application) updateSplitTransaction(
 // createSplitTransaction will create a new transaction with the remaining amount.
 func (a *Application) createSplitTransaction(
 	t *models.Transaction,
-	modulo float64,
+	remainder float64,
 	currencyDecimalPlaces int,
 	accountID string,
 	currencyID string,
 ) (*models.UpsertTransactionResponse, error) {
-	moduloAmount := fmt.Sprintf("%.[2]*[1]f", modulo, currencyDecimalPlaces)
+	remainderAmount := fmt.Sprintf("%.[2]*[1]f", remainder, currencyDecimalPlaces)
 	tToCreate := models.Transaction{
-		Amount:        moduloAmount,
+		Amount:        remainderAmount,
 		SourceID:      accountID,
 		CurrencyID:    currencyID,
 		DestinationID: t.DestinationID,

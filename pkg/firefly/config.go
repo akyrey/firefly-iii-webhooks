@@ -2,6 +2,7 @@ package firefly
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"slices"
 
@@ -41,6 +42,9 @@ func (c *Config) UnmarshalJSON(b []byte) error {
 			for _, raw := range list {
 				var splitTicket SplitTicketConfig
 				if err := json.Unmarshal(raw, &splitTicket); err != nil {
+					return err
+				}
+				if err := splitTicket.validate(); err != nil {
 					return err
 				}
 				splitTicketList = append(splitTicketList, splitTicket)
@@ -101,7 +105,21 @@ type SplitTicketConfig struct {
 	DestinationAccountId             string          `json:"destination_account_id"`
 	DestinationCurrencyId            string          `json:"destination_currency_id"`
 	DestinationCurrencyDecimalPlaces int             `json:"destination_currency_decimal_places"`
-	SplitAmount                      float64         `json:"split_amount"`
+	// SplitAmounts are the ticket denominations, combined to cover as much of the foreign amount as possible.
+	SplitAmounts []float64 `json:"split_amounts"`
+}
+
+// validate checks the configuration can be used to split a transaction.
+func (c SplitTicketConfig) validate() error {
+	if len(c.SplitAmounts) == 0 {
+		return ErrInvalidSplitAmounts
+	}
+	for _, amount := range c.SplitAmounts {
+		if amount <= 0 {
+			return fmt.Errorf("%w: found %v", ErrInvalidSplitAmounts, amount)
+		}
+	}
+	return nil
 }
 
 // AppliesTo checks if the configuration applies to the given message.

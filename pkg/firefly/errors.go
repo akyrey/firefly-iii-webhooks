@@ -7,4 +7,5 @@ var (
 	ErrFireflyEmptyApiKey      = errors.New("api key cannot be empty")
 	ErrFireflyInvalidSignature = errors.New("invalid signature")
 	ErrFireflyInvalidSecret    = errors.New("invalid signature secret")
+	ErrInvalidSplitAmounts     = errors.New("split_amounts must be a non-empty list of positive amounts")
 )
