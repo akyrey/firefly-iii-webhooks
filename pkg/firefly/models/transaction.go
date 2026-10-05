@@ -96,7 +96,7 @@ type TransactionResponse struct {
 	BillName                     string    `json:"bill_name"`
 	Reconciled                   bool      `json:"reconciled"`
 	Notes                        string    `json:"notes"`
-	Tags                         any       `json:"tags"`
+	Tags                         []string  `json:"tags"`
 	InternalReference            string    `json:"internal_reference"`
 	ExternalID                   string    `json:"external_id"`
 	ExternalURL                  string    `json:"external_url"`

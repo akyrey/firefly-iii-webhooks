@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,6 +34,41 @@ func (a *Application) parseRequestMessage(r *http.Request) (body []byte, webhook
 	return body, webhookMessage, nil
 }
 
+// webhookTag returns the tag attached to every transaction touched by the given webhook action.
+func webhookTag(action firefly.ConfigType) string {
+	return fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, action)
+}
+
+// splitTicketAlreadyHandled fetches the current state of the transaction group and reports whether the split
+// must be skipped: because this webhook already split it, or because it was edited after Firefly stored the
+// message (its foreign amount no longer matches the payload one).
+func (a *Application) splitTicketAlreadyHandled(groupID int, payloadForeignAmount float64, decimalPlaces int) (bool, error) {
+	current, err := a.FireflyClient.GetTransaction(groupID)
+	if err != nil {
+		return false, fmt.Errorf("failed fetching current state of transaction group %d: %w", groupID, err)
+	}
+
+	transactions := current.Data.Attributes.Transactions
+	if len(transactions) != 1 {
+		a.Logger.Info("Transaction group no longer has exactly one transaction, skipping split", "groupID", groupID, "count", len(transactions))
+		return true, nil
+	}
+	t := transactions[0]
+	if slices.Contains(t.Tags, webhookTag(firefly.SplitTicket)) {
+		a.Logger.Info("Transaction already split, skipping replayed message", "groupID", groupID)
+		return true, nil
+	}
+
+	currentForeignAmount, err := strconv.ParseFloat(strings.TrimSpace(t.ForeignAmount), 64)
+	if err != nil || math.Abs(currentForeignAmount-payloadForeignAmount) >= math.Pow10(-decimalPlaces) {
+		a.Logger.Info("Transaction changed since the message was stored, skipping split",
+			"groupID", groupID, "current foreign amount", t.ForeignAmount, "payload foreign amount", payloadForeignAmount)
+		return true, nil
+	}
+
+	return false, nil
+}
+
 // updateSplitTransaction will update the transaction with the new amount and foreign amount.
 func (a *Application) updateSplitTransaction(
 	t *models.Transaction,
@@ -50,7 +88,7 @@ func (a *Application) updateSplitTransaction(
 
 	tToUpdate.Amount = updatedAmount
 	tToUpdate.ForeignAmount = &updatedForeignAmount
-	tToUpdate.Tags = append(tToUpdate.Tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.SplitTicket))
+	tToUpdate.Tags = append(tToUpdate.Tags, webhookTag(firefly.SplitTicket))
 	tToUpdate.TransactionJournalID = ""
 	a.Logger.Debug("Updating transaction amount, foreign amount and tags", "contentID", contentID, "transaction", tToUpdate)
 	return a.FireflyClient.UpdateTransaction(
@@ -81,7 +119,7 @@ func (a *Application) createSplitTransaction(
 		Description:   t.Description,
 		BudgetID:      t.BudgetID,
 		CategoryID:    t.CategoryID,
-		Tags:          append(t.Tags, fmt.Sprintf("%s %s", firefly.WEBHOOK_TAG_PREFIX, firefly.SplitTicket)),
+		Tags:          append(t.Tags, webhookTag(firefly.SplitTicket)),
 		Date:          t.Date.Add(time.Second),
 		Notes:         t.Notes,
 	}

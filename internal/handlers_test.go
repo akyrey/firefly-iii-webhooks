@@ -147,3 +147,54 @@ func TestTransferLinksTransactionJournalIDs(t *testing.T) {
 		OutwardID:  testCreatedJournalID,
 	}}, *links)
 }
+
+func TestHandlersAcknowledgeMessagesWithoutMatchingConfig(t *testing.T) {
+	// A webhook with several triggers also delivers messages no config handles: they must be acknowledged,
+	// otherwise Firefly III keeps re-sending them.
+	tests := []struct {
+		name    string
+		path    string
+		handler func(*Application) http.HandlerFunc
+		config  firefly.Config
+	}{
+		{
+			name:    "cashback",
+			path:    "/api/v1/webhook/cashback",
+			handler: func(a *Application) http.HandlerFunc { return a.cashback },
+			config: firefly.Config{firefly.Cashback: []firefly.ConfigValue{firefly.CashbackConfig{
+				Trigger:  firefly.UPDATE_TRANSACTION,
+				Response: firefly.RESPONSE_TRANSACTIONS,
+				Secret:   testSecret,
+				Type:     firefly.WITHDRAWAL,
+			}}},
+		},
+		{
+			name:    "transfer",
+			path:    "/api/v1/webhook/transfer",
+			handler: func(a *Application) http.HandlerFunc { return a.transfer },
+			config: firefly.Config{firefly.Transfer: []firefly.ConfigValue{firefly.TransferConfig{
+				Trigger:  firefly.UPDATE_TRANSACTION,
+				Response: firefly.RESPONSE_TRANSACTIONS,
+				Secret:   testSecret,
+				Type:     firefly.WITHDRAWAL,
+			}}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			srv, links := fakeFirefly(t)
+			app := newTestApplication(srv.URL, tt.config)
+			req := signedWebhookRequest(t, tt.path, "withdrawal", "4", "6", "Cashback")
+			rec := httptest.NewRecorder()
+
+			// Act
+			tt.handler(app)(rec, req)
+
+			// Assert
+			assert.Equal(t, http.StatusNoContent, rec.Code)
+			assert.Empty(t, *links)
+		})
+	}
+}

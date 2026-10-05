@@ -21,8 +21,9 @@ func (a *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 
 	configValue, err := a.FireflyConfig.FindConfig(firefly.SplitTicket, webhookMessage)
 	if err != nil {
-		a.Logger.Debug("No configuration found", "error", err)
-		a.clientError(w, r, http.StatusNotFound)
+		// Acknowledge the message anyway: Firefly III retries any non-2xx answer with the same payload.
+		a.Logger.Debug("No configuration found", "trigger", webhookMessage.Trigger, "error", err)
+		a.clientResponse(w, r, http.StatusNoContent)
 		return
 	}
 	config, ok := configValue.(firefly.SplitTicketConfig)
@@ -68,8 +69,8 @@ func (a *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if t.ForeignAmount == nil || t.ForeignCurrencyDecimalPlaces == nil {
-		a.Logger.Error("Transactions missing foreign amount info", "transaction", t)
-		a.clientError(w, r, http.StatusBadRequest)
+		a.Logger.Warn("Transaction missing foreign amount info, nothing to split", "transaction", t)
+		a.clientResponse(w, r, http.StatusNoContent)
 		return
 	}
 
@@ -77,6 +78,18 @@ func (a *Application) splitTicket(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.Logger.Error("Invalid foreign amount", "amount", *t.ForeignAmount)
 		a.clientError(w, r, http.StatusBadRequest)
+		return
+	}
+
+	// Firefly III replays stored messages whose delivery failed, so the payload may be outdated:
+	// only act when the transaction still matches it and hasn't been split yet.
+	handled, err := a.splitTicketAlreadyHandled(content.ID, foreignAmount, *t.ForeignCurrencyDecimalPlaces)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if handled {
+		a.clientResponse(w, r, http.StatusNoContent)
 		return
 	}
 
@@ -145,8 +158,9 @@ func (a *Application) cashback(w http.ResponseWriter, r *http.Request) {
 
 	configValue, err := a.FireflyConfig.FindConfig(firefly.Cashback, webhookMessage)
 	if err != nil {
-		a.Logger.Debug("No configuration found", "error", err)
-		a.clientError(w, r, http.StatusNotFound)
+		// Acknowledge the message anyway: Firefly III retries any non-2xx answer with the same payload.
+		a.Logger.Debug("No configuration found", "trigger", webhookMessage.Trigger, "error", err)
+		a.clientResponse(w, r, http.StatusNoContent)
 		return
 	}
 	config, ok := configValue.(firefly.CashbackConfig)
@@ -216,8 +230,9 @@ func (a *Application) transfer(w http.ResponseWriter, r *http.Request) {
 
 	configValue, err := a.FireflyConfig.FindConfig(firefly.Transfer, webhookMessage)
 	if err != nil {
-		a.Logger.Debug("No configuration found", "error", err)
-		a.clientError(w, r, http.StatusNotFound)
+		// Acknowledge the message anyway: Firefly III retries any non-2xx answer with the same payload.
+		a.Logger.Debug("No configuration found", "trigger", webhookMessage.Trigger, "error", err)
+		a.clientResponse(w, r, http.StatusNoContent)
 		return
 	}
 	config, ok := configValue.(firefly.TransferConfig)

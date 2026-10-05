@@ -138,6 +138,41 @@ func (f *Firefly) CreateTransaction(t *models.StoreTransactionRequest) (*models.
 	return &upsertTransaction, nil
 }
 
+// GetTransaction will fetch the current state of a transaction group from Firefly III.
+func (f *Firefly) GetTransaction(id int) (*models.UpsertTransactionResponse, error) {
+	url := fmt.Sprintf("%s/api/v1/transactions/%d", f.baseUrl, id)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	f.addHeaders(req)
+	r, err := f.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(r.Body)
+
+	if r.StatusCode != http.StatusOK {
+		return nil, f.handleHttpErrorResponse(r)
+	}
+
+	res, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var transaction models.UpsertTransactionResponse
+	err = json.Unmarshal(res, &transaction)
+	if err != nil {
+		return nil, err
+	}
+
+	return &transaction, nil
+}
+
 // UpdateTransaction will create a new transaction in Firefly III.
 func (f *Firefly) UpdateTransaction(id int, t *models.UpdateTransactionRequest) (*models.UpsertTransactionResponse, error) {
 	url := fmt.Sprintf("%s/api/v1/transactions/%d", f.baseUrl, id)
