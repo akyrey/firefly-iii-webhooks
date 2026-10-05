@@ -131,6 +131,30 @@ func (a *Application) createCashbackTransaction(
 	})
 }
 
+// linkCreatedTransaction will link the transaction that triggered the webhook with the one created from it.
+// Firefly links transaction journals, so both ids must be transaction journal ids and not transaction group ids.
+func (a *Application) linkCreatedTransaction(
+	linkTypeID string,
+	original *models.Transaction,
+	created *models.UpsertTransactionResponse,
+) error {
+	if len(created.Data.Attributes.Transactions) != 1 {
+		a.Logger.Debug("Created transaction doesn't have exactly one transaction, skipping linking", "created", created)
+		return nil
+	}
+	inwardID := original.TransactionJournalID
+	outwardID := created.Data.Attributes.Transactions[0].TransactionJournalID
+	if inwardID == "" || outwardID == "" {
+		return fmt.Errorf("missing transaction journal id to link: inward %q, outward %q", inwardID, outwardID)
+	}
+
+	a.Logger.Debug("Linking transactions", "initial id", inwardID, "created id", outwardID, "link type", linkTypeID)
+	if err := a.FireflyClient.LinkTransactions(linkTypeID, inwardID, outwardID); err != nil {
+		return fmt.Errorf("failed linking transaction journals %s and %s: %w", inwardID, outwardID, err)
+	}
+	return nil
+}
+
 // createTransferTransaction will create a new transaction with the cashback amount.
 func (a *Application) createTransferTransaction(
 	t *models.Transaction,

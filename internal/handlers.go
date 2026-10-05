@@ -178,7 +178,6 @@ func (a *Application) cashback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var transactionIDToLink *string
 	for _, t := range content.Transactions {
 		if t.SourceID != config.SourceAccountId {
 			a.Logger.Debug("Transactions source id different from configured one", "transaction", t, "config", config)
@@ -196,13 +195,8 @@ func (a *Application) cashback(w http.ResponseWriter, r *http.Request) {
 			a.serverError(w, r, err2)
 			return
 		}
-		transactionIDToLink = &created.Data.ID
-	}
-
-	if transactionIDToLink != nil {
-		err = a.FireflyClient.LinkTransactions(config.LinkTypeId, strconv.Itoa(content.ID), *transactionIDToLink)
-		if err != nil {
-			a.serverError(w, r, err)
+		if err2 = a.linkCreatedTransaction(config.LinkTypeId, &t, created); err2 != nil {
+			a.serverError(w, r, err2)
 			return
 		}
 	}
@@ -249,7 +243,6 @@ func (a *Application) transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var transactionIDToLink *string
 	for _, t := range content.Transactions {
 		sourceID := t.SourceID
 		// If it's a deposit, the source id is the transaction destination id
@@ -290,13 +283,8 @@ func (a *Application) transfer(w http.ResponseWriter, r *http.Request) {
 			a.serverError(w, r, err2)
 			return
 		}
-		transactionIDToLink = &created.Data.ID
-	}
-
-	if transactionIDToLink != nil {
-		err = a.FireflyClient.LinkTransactions(config.LinkTypeId, strconv.Itoa(content.ID), *transactionIDToLink)
-		if err != nil {
-			a.serverError(w, r, err)
+		if err2 = a.linkCreatedTransaction(config.LinkTypeId, &t, created); err2 != nil {
+			a.serverError(w, r, err2)
 			return
 		}
 	}
